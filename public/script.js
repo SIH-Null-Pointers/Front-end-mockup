@@ -1014,37 +1014,28 @@ function focusTourist(docId, zoom) {
   }
 }
 
-// Add New Tourist Modal HTML
-const addTouristModalHTML = `
-<div id="addTouristModal" class="modal-overlay" style="display: none;">
-  <div class="modal">
-    <div class="modal-header">
-      <h3>Add New Tourist</h3>
-      <button id="closeAddModalBtn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
-    </div>
-    <div class="modal-body">
-      <p>Enter the email address to create a new tourist account. A password reset email will be sent automatically.</p>
-      <div class="modal-row">
-        <label for="newEmail">Email Address</label>
-        <input type="email" id="newEmail" placeholder="user@example.com" required>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" id="cancelAddBtn">Cancel</button>
-        <button class="btn small" id="createTouristBtn">Create</button>
-      </div>
-      <p id="addErrorMsg" style="color: red; font-size: 0.9rem; margin-top: 0.5rem;"></p>
-    </div>
-  </div>
-</div>
-`;
-
 // Modal functions for adding tourist
 function openAddTouristModal() {
   const modal = document.getElementById('addTouristModal');
-  const emailInput = document.getElementById('newEmail');
   const errorMsg = document.getElementById('addErrorMsg');
   
-  if (emailInput) emailInput.value = '';
+  // Clear all input fields
+  document.getElementById('touristFullName').value = '';
+  document.getElementById('touristNationality').value = '';
+  document.getElementById('touristIdType').value = '';
+  document.getElementById('touristIdNumber').value = '';
+  document.getElementById('touristPhone').value = '';
+  document.getElementById('touristAltPhone').value = '';
+  document.getElementById('touristEmail').value = '';
+  document.getElementById('touristLanguage').value = '';
+  
+  // Clear family member fields
+  document.getElementById('familyMemberName').value = '';
+  document.getElementById('familyMemberNationality').value = '';
+  document.getElementById('familyMemberIdType').value = '';
+  document.getElementById('familyMemberBloodGroup').value = '';
+  document.getElementById('familyMemberDetails').style.display = 'none';
+  
   if (errorMsg) errorMsg.textContent = '';
   if (modal) modal.style.display = 'flex';
 }
@@ -1055,23 +1046,105 @@ function closeAddTouristModal() {
 }
 
 async function createNewTourist() {
-  const emailInput = document.getElementById('newEmail');
+  const fullName = document.getElementById('touristFullName').value.trim();
+  const nationality = document.getElementById('touristNationality').value;
+  const idType = document.getElementById('touristIdType').value.trim();
+  const idNumber = document.getElementById('touristIdNumber').value.trim();
+  const phone = document.getElementById('touristPhone').value.trim();
+  const altPhone = document.getElementById('touristAltPhone').value.trim();
+  const email = document.getElementById('touristEmail').value.trim();
+  const language = document.getElementById('touristLanguage').value.trim();
+  
+  // Family member data
+  const familyMemberName = document.getElementById('familyMemberName').value.trim();
+  const familyMemberNationality = document.getElementById('familyMemberNationality').value;
+  const familyMemberIdType = document.getElementById('familyMemberIdType').value.trim();
+  const familyMemberBloodGroup = document.getElementById('familyMemberBloodGroup').value;
+  
   const errorEl = document.getElementById('addErrorMsg');
 
-  if (!emailInput || !errorEl) return;
+  if (!errorEl) return;
 
-  const email = emailInput.value.trim();
-
+  // Validate required fields
+  if (!fullName) {
+    errorEl.textContent = 'Please enter the full name.';
+    return;
+  }
+  
+  if (!nationality) {
+    errorEl.textContent = 'Please select nationality.';
+    return;
+  }
+  
+  if (!idType) {
+    errorEl.textContent = 'Please enter the type of identification.';
+    return;
+  }
+  
+  if (!idNumber) {
+    errorEl.textContent = 'Please enter the identification number.';
+    return;
+  }
+  
+  if (!phone) {
+    errorEl.textContent = 'Please enter the phone number.';
+    return;
+  }
+  
   if (!email || !email.includes('@')) {
     errorEl.textContent = 'Please enter a valid email address.';
     return;
   }
+  
+  if (!language) {
+    errorEl.textContent = 'Please enter the preferred language.';
+    return;
+  }
+  
+  // Validate family member details if name is provided
+  if (familyMemberName) {
+    if (!familyMemberNationality) {
+      errorEl.textContent = 'Please select family member nationality.';
+      return;
+    }
+    
+    if (!familyMemberIdType) {
+      errorEl.textContent = 'Please enter family member type of identification.';
+      return;
+    }
+    
+    if (!familyMemberBloodGroup) {
+      errorEl.textContent = 'Please select family member blood group.';
+      return;
+    }
+  }
 
   try {
+    // Prepare family member data
+    let familyMemberData = null;
+    if (familyMemberName) {
+      familyMemberData = {
+        name: familyMemberName,
+        nationality: familyMemberNationality,
+        idType: familyMemberIdType,
+        bloodGroup: familyMemberBloodGroup
+      };
+    }
+    
     const res = await fetch('/add-tourist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ 
+        fullName, 
+        nationality, 
+        idType, 
+        idNumber, 
+        phone, 
+        altPhone, 
+        email, 
+        language,
+        familyMember: familyMemberData
+      })
     });
 
     const data = await res.json();
@@ -1080,7 +1153,13 @@ async function createNewTourist() {
       throw new Error(data.error || 'Failed to create tourist');
     }
 
-    alert('Tourist created successfully! Password reset email sent.');
+    // Show success message
+    if (data.resetLink) {
+      alert('Tourist created successfully! Please check the email for password setup instructions.');
+    } else {
+      alert('Tourist created successfully! Please ask the user to reset their password.');
+    }
+    
     closeAddTouristModal();
     refreshDashboard(); // Refresh to show new user
   } catch (e) {
@@ -1094,9 +1173,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.href = 'login.html';
     return;
   }
-
-  // Append add tourist modal
-  document.body.insertAdjacentHTML('beforeend', addTouristModalHTML);
 
   refreshDashboard();
 
@@ -1113,6 +1189,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // Add New Tourist button
   const addTouristBtn = document.getElementById('addTouristBtn');
   addTouristBtn?.addEventListener('click', openAddTouristModal);
+
+  // Add event listener for family member name input
+  const familyMemberNameInput = document.getElementById('familyMemberName');
+  familyMemberNameInput?.addEventListener('input', function() {
+    const familyDetails = document.getElementById('familyMemberDetails');
+    if (this.value.trim() !== '') {
+      familyDetails.style.display = 'block';
+    } else {
+      familyDetails.style.display = 'none';
+    }
+  });
 
   // Manage Safe Zones button
   const manageSafeZonesBtn = document.getElementById('manageSafeZonesBtn');
