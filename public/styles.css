@@ -101,6 +101,17 @@ body {
   background: #c0392b;
 }
 
+.search-btn {
+  background: #95a5a6;
+  color: white;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.search-btn:hover {
+  background: #7f8c8d;
+}
+
 .zone-toggle-btn {
   background: #ecf0f1 !important;
   color: #2c3e50 !important;
@@ -191,6 +202,31 @@ body {
 
 .leaflet-control-zoom a:hover {
   transform: translateY(-1px);
+}
+
+/* Geocoder Search Control */
+.leaflet-control-geocoder {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-control-geocoder .leaflet-control-geocoder-form,
+.leaflet-control-geocoder .leaflet-control-geocoder-list {
+  border-radius: 6px !important;
+}
+
+.leaflet-control-geocoder-list {
+  max-height: 200px !important;
+  overflow-y: auto !important;
+}
+
+.leaflet-control-geocoder-result {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #eee !important;
+}
+
+.leaflet-control-geocoder-result:hover {
+  background: #f5f5f5 !important;
 }
 
 /* Enhanced tourist markers */
@@ -588,9 +624,109 @@ body {
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   position: relative;
+}
+
+.search-section {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 1rem;
+}
+
+.search-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 2px solid #e0e0e0;
+  border-radius: 25px;
+  padding: 0 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.search-container:focus-within {
+  border-color: #3498db;
+  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.search-icon {
+  color: #7f8c8d;
+  font-size: 1rem;
+  margin-right: 10px;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  flex: 1;
+  padding: 12px 5px;
+  font-size: 1rem;
+  background: transparent;
+  color: #2c3e50;
+}
+
+.search-input::placeholder {
+  color: #bdc3c7;
+}
+
+.search-btn {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.search-btn:hover {
+  background: #2980b9;
+}
+
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 5px;
+}
+
+.search-result-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.search-result-item:hover {
+  background: #f8f9fa;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-name {
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.search-result-address {
+  color: #7f8c8d;
+  font-size: 0.85rem;
 }
 
 .zone-type-toggle {

@@ -7,6 +7,7 @@
   <title>India Tourist Management System Admin Dashboard</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -173,12 +174,12 @@
         <div class="zones-lists-panel">
           <!-- Safe Zones -->
           <div class="zones-section">
-            <h4 class="section-title">🟢 Safe Zones (<span id="safeZonesCount">0</span>)</h4>
+            <h4 class="section-title safe-title">🟢 Safe Zones (<span id="safeZonesCount">0</span>)</h4>
             <div id="safeZonesList"></div>
           </div>
           <!-- Unsafe Zones -->
           <div class="zones-section">
-            <h4 class="section-title">🔴 Unsafe Zones (<span id="unsafeZonesCount">0</span>)</h4>
+            <h4 class="section-title unsafe-title">🔴 Unsafe Zones (<span id="unsafeZonesCount">0</span>)</h4>
             <div id="unsafeZonesList"></div>
           </div>
         </div>
@@ -188,7 +189,9 @@
             <button class="btn zone-toggle-btn active" data-type="safe">🟢 Safe Zone</button>
             <button class="btn zone-toggle-btn" data-type="unsafe">🔴 Unsafe Zone</button>
           </div>
-          <div id="safeZonesMap" style="height: 350px; border-radius: 8px; margin-bottom: 1rem;"></div>
+
+          <div id="safeZonesMap" style="height: 550px; border-radius: 12px; margin-bottom: 1rem;"></div>
+
           <div class="modal-row">
             <label for="zoneRadius">Radius (meters)</label>
             <input type="number" id="zoneRadius" min="50" max="5000" value="500" step="50">
@@ -203,6 +206,7 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script src="script.js"></script>
   <script type="module" src="realtime.js"></script>
 </body>

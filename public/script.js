@@ -20,6 +20,7 @@ let followTargetDocId = null; // keep centering on this tourist across updates
 let safeZonesMapInstance;
 let selectedZoneLatLng = null;
 let currentZoneType = 'safe'; // 'safe' or 'unsafe'
+let geocoderControl;
 
 // India map bounds and center
 const INDIA_CENTER = [21.7679, 78.8718]; // India center
@@ -80,13 +81,13 @@ eventSource.onmessage = (event) => {
   } else if (update.type === 'safeZones') {
     safeZones = update.data;
     renderSafeZonesOnMap();
-    if (document.getElementById('safeZonesModal').style.display === 'flex') {
+    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
       renderSafeZonesList();
     }
   } else if (update.type === 'unsafeZones') {
     unsafeZones = update.data;
     renderUnsafeZonesOnMap();
-    if (document.getElementById('safeZonesModal').style.display === 'flex') {
+    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
       renderUnsafeZonesList();
     }
   }
@@ -184,7 +185,11 @@ function renderMap() {
 
     mapInitialized = true;
     // Disable any previous auto-focus cycles if present
-    if (autoFocusTimer) { try { clearInterval(autoFocusTimer); } catch (_) {} autoFocusTimer = null; }
+    if (autoFocusTimer) { 
+      try { clearInterval(autoFocusTimer); } 
+      catch (_) {} 
+      autoFocusTimer = null; 
+    }
   }
 
   const statusColors = {
@@ -421,7 +426,7 @@ async function fetchSafeZones() {
     const res = await fetch('http://localhost:3000/safe-zones');
     safeZones = await res.json();
     renderSafeZonesOnMap();
-    if (document.getElementById('safeZonesModal').style.display === 'flex') {
+    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
       renderSafeZonesList();
     }
   } catch (error) {
@@ -435,7 +440,7 @@ async function fetchUnsafeZones() {
     const res = await fetch('http://localhost:3000/unsafe-zones');
     unsafeZones = await res.json();
     renderUnsafeZonesOnMap();
-    if (document.getElementById('safeZonesModal').style.display === 'flex') {
+    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
       renderUnsafeZonesList();
     }
   } catch (error) {
@@ -453,12 +458,33 @@ function openSafeZonesModal() {
   fetchSafeZones();
   fetchUnsafeZones();
   updateZoneTypeToggle();
+  
+  // Reset search
+  const searchInput = document.getElementById('placeSearch');
+  const searchResults = document.getElementById('searchResults');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  searchInput.value = '';
+  searchResults.style.display = 'none';
+  searchResults.innerHTML = '';
+  clearBtn.style.display = 'none';
+  selectedZoneLatLng = null;
+  document.getElementById('saveSafeZoneBtn').disabled = true;
 }
 
 function closeSafeZonesModal() {
   document.getElementById('safeZonesModal').style.display = 'none';
   selectedZoneLatLng = null;
   document.getElementById('saveSafeZoneBtn').disabled = true;
+  
+  // Reset search
+  const searchInput = document.getElementById('placeSearch');
+  const searchResults = document.getElementById('searchResults');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  searchInput.value = '';
+  searchResults.style.display = 'none';
+  searchResults.innerHTML = '';
+  clearBtn.style.display = 'none';
+  
   if (safeZonesMapInstance) {
     safeZonesMapInstance.off('click');
   }
@@ -496,6 +522,115 @@ function initSafeZonesMap() {
     minZoom: 5
   }).addTo(safeZonesMapInstance);
 
+  // Initialize Geocoder for place search
+  if (geocoderControl) {
+    safeZonesMapInstance.removeControl(geocoderControl);
+  }
+  
+  geocoderControl = L.Control.geocoder({
+    defaultMarkGeocode: false,
+    placeholder: 'Search for places...',
+    errorMessage: 'Place not found',
+    geocoder: L.Control.Geocoder.nominatim({
+      geocodingQueryParams: {
+        countrycodes: 'in', // Restrict to India
+        viewbox: `${INDIA_BOUNDS[0][1]},${INDIA_BOUNDS[0][0]},${INDIA_BOUNDS[1][1]},${INDIA_BOUNDS[1][0]}`, // India bounding box
+        bounded: 1 // Restrict results to bounding box
+      }
+    })
+  }).on('markgeocode', function(e) {
+    const bbox = e.geocode.bbox;
+    safeZonesMapInstance.fitBounds(bbox);
+    
+    // Set the selected location for zone creation
+    selectedZoneLatLng = e.geocode.center;
+    document.getElementById('saveSafeZoneBtn').disabled = false;
+    
+    // Clear previous marker
+    safeZonesMapInstance.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer.options.icon.options.html) {
+        safeZonesMapInstance.removeLayer(layer);
+      }
+    });
+    
+    const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
+    L.marker(selectedZoneLatLng, {
+      icon: L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
+    }).addTo(safeZonesMapInstance).bindPopup(
+      `Selected: ${e.geocode.name}<br>${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center`
+    ).openPopup();
+    
+    // Hide search results
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('placeSearch').value = e.geocode.name;
+    document.getElementById('clearSearchBtn').style.display = 'inline-block';
+  }).addTo(safeZonesMapInstance);
+
+  // Custom search handling
+  const searchInput = document.getElementById('placeSearch');
+  const searchResults = document.getElementById('searchResults');
+  const clearBtn = document.getElementById('clearSearchBtn');
+  const searchContainer = document.querySelector('.search-container');
+
+  searchInput.addEventListener('input', function(e) {
+    const query = e.target.value.trim();
+    if (query.length < 2) {
+      searchResults.style.display = 'none';
+      searchResults.innerHTML = '';
+      return;
+    }
+
+    // Use Nominatim API directly for better control
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5&viewbox=${INDIA_BOUNDS[0][1]},${INDIA_BOUNDS[0][0]},${INDIA_BOUNDS[1][1]},${INDIA_BOUNDS[1][0]}&bounded=1`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.length === 0) {
+          searchResults.innerHTML = '<div class="search-result-item">No places found</div>';
+        } else {
+          searchResults.innerHTML = data.map(place => `
+            <div class="search-result-item" onclick="selectSearchResult(${place.lat}, ${place.lon}, '${place.display_name.replace(/'/g, "\\'")}')">
+              <div class="search-result-name">${place.display_name.split(',')[0]}</div>
+              <div class="search-result-address">${place.display_name}</div>
+            </div>
+          `).join('');
+        }
+        searchResults.style.display = 'block';
+      })
+      .catch(error => {
+        console.error('Search error:', error);
+        searchResults.innerHTML = '<div class="search-result-item">Search error</div>';
+        searchResults.style.display = 'block';
+      });
+  });
+
+  clearBtn.addEventListener('click', function() {
+    searchInput.value = '';
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
+    clearBtn.style.display = 'none';
+    selectedZoneLatLng = null;
+    document.getElementById('saveSafeZoneBtn').disabled = true;
+    
+    // Clear marker
+    safeZonesMapInstance.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer.options.icon.options.html) {
+        safeZonesMapInstance.removeLayer(layer);
+      }
+    });
+  });
+
+  // Hide results when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!searchContainer.contains(e.target)) {
+      searchResults.style.display = 'none';
+    }
+  });
+
   // Click to mark spot - restrict to India bounds
   safeZonesMapInstance.on('click', (e) => {
     const lat = e.latlng.lat;
@@ -506,10 +641,17 @@ function initSafeZonesMap() {
         lng >= INDIA_BOUNDS[0][1] && lng <= INDIA_BOUNDS[1][1]) {
       selectedZoneLatLng = e.latlng;
       document.getElementById('saveSafeZoneBtn').disabled = false;
+      
+      // Hide search results when clicking on map
+      searchResults.style.display = 'none';
+      
       // Clear previous marker
       safeZonesMapInstance.eachLayer(layer => {
-        if (layer instanceof L.Marker) safeZonesMapInstance.removeLayer(layer);
+        if (layer instanceof L.Marker && layer.options.icon.options.html) {
+          safeZonesMapInstance.removeLayer(layer);
+        }
       });
+      
       const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
       L.marker(selectedZoneLatLng, {
         icon: L.divIcon({
@@ -519,8 +661,12 @@ function initSafeZonesMap() {
           iconAnchor: [10, 10]
         })
       }).addTo(safeZonesMapInstance).bindPopup(
-        `${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center`
+        `${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center<br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
       ).openPopup();
+      
+      // Clear search input when clicking on map
+      searchInput.value = '';
+      clearBtn.style.display = 'none';
     } else {
       alert('Please click within India boundaries to create a zone.');
     }
@@ -559,6 +705,51 @@ function initSafeZonesMap() {
 
   // Center map view
   safeZonesMapInstance.setView(INDIA_CENTER, 5);
+}
+
+// Global function for search result selection
+function selectSearchResult(lat, lng, name) {
+  const latLng = L.latLng(lat, lng);
+  
+  // Check if within India bounds
+  if (lat >= INDIA_BOUNDS[0][0] && lat <= INDIA_BOUNDS[1][0] &&
+      lng >= INDIA_BOUNDS[0][1] && lng <= INDIA_BOUNDS[1][1]) {
+    
+    selectedZoneLatLng = latLng;
+    document.getElementById('saveSafeZoneBtn').disabled = false;
+    
+    // Clear previous marker
+    safeZonesMapInstance.eachLayer(layer => {
+      if (layer instanceof L.Marker && layer.options.icon.options.html) {
+        safeZonesMapInstance.removeLayer(layer);
+      }
+    });
+    
+    const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
+    L.marker(latLng, {
+      icon: L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
+    }).addTo(safeZonesMapInstance).bindPopup(
+      `Selected: ${name.split(',')[0]}<br>${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center`
+    ).openPopup();
+    
+    // Center map on selection
+    safeZonesMapInstance.setView(latLng, 12);
+    
+    // Hide search results
+    const searchResults = document.getElementById('searchResults');
+    searchResults.style.display = 'none';
+    const searchInput = document.getElementById('placeSearch');
+    searchInput.value = name.split(',')[0];
+    const clearBtn = document.getElementById('clearSearchBtn');
+    clearBtn.style.display = 'inline-block';
+  } else {
+    alert('Selected location is outside India boundaries.');
+  }
 }
 
 function renderSafeZonesList() {
@@ -677,7 +868,8 @@ function openTouristModal(docId) {
   document.getElementById('modalError').textContent = '';
 
   // Show delete button
-  document.getElementById('deleteBtn').style.display = 'block';
+  const deleteBtn = document.getElementById('deleteBtn');
+  if (deleteBtn) deleteBtn.style.display = 'block';
 
   document.getElementById('touristModal').style.display = 'flex';
 }
@@ -685,13 +877,14 @@ function openTouristModal(docId) {
 function closeTouristModal() {
   currentTouristDocId = null;
   document.getElementById('touristModal').style.display = 'none';
-  document.getElementById('deleteBtn').style.display = 'none';
+  const deleteBtn = document.getElementById('deleteBtn');
+  if (deleteBtn) deleteBtn.style.display = 'none';
 }
 
 async function saveTouristChanges() {
   if (!currentTouristDocId) {
     const errorEl = document.getElementById('modalError');
-    errorEl.textContent = 'Cannot save: missing document reference.';
+    if (errorEl) errorEl.textContent = 'Cannot save: missing document reference.';
     return;
   }
   const name = document.getElementById('modalName').value.trim();
@@ -700,10 +893,10 @@ async function saveTouristChanges() {
   const safetyScore = Number(document.getElementById('modalSafety').value);
 
   const errorEl = document.getElementById('modalError');
-  errorEl.textContent = '';
+  if (errorEl) errorEl.textContent = '';
 
   if (!Number.isFinite(safetyScore) || safetyScore < 0 || safetyScore > 100) {
-    errorEl.textContent = 'Safety score must be between 0 and 100.';
+    if (errorEl) errorEl.textContent = 'Safety score must be between 0 and 100.';
     return;
   }
   try {
@@ -724,21 +917,21 @@ async function saveTouristChanges() {
     }
     closeTouristModal(); // SSE will refresh UI
   } catch (e) {
-    errorEl.textContent = `❌ ${e.message}`;
+    if (errorEl) errorEl.textContent = `❌ ${e.message}`;
   }
 }
 
 async function deleteTourist() {
   if (!currentTouristDocId) {
     const errorEl = document.getElementById('modalError');
-    errorEl.textContent = 'Cannot delete: missing document reference.';
+    if (errorEl) errorEl.textContent = 'Cannot delete: missing document reference.';
     return;
   }
 
   const t = getTouristByDocId(currentTouristDocId);
   if (!t) {
     const errorEl = document.getElementById('modalError');
-    errorEl.textContent = 'Tourist not found.';
+    if (errorEl) errorEl.textContent = 'Tourist not found.';
     return;
   }
 
@@ -748,7 +941,7 @@ async function deleteTourist() {
   }
 
   const errorEl = document.getElementById('modalError');
-  errorEl.textContent = 'Deleting tourist...';
+  if (errorEl) errorEl.textContent = 'Deleting tourist...';
 
   try {
     const res = await fetch(`/tourists/${encodeURIComponent(currentTouristDocId)}`, {
@@ -766,7 +959,7 @@ async function deleteTourist() {
     closeTouristModal();
     refreshDashboard(); // Refresh to update UI
   } catch (e) {
-    errorEl.textContent = `❌ ${e.message}`;
+    if (errorEl) errorEl.textContent = `❌ ${e.message}`;
   }
 }
 
@@ -776,7 +969,7 @@ function contactTourist() {
     window.location.href = `tel:${t.phone}`;
   } else {
     const errorEl = document.getElementById('modalError');
-    errorEl.textContent = 'No phone number available.';
+    if (errorEl) errorEl.textContent = 'No phone number available.';
   }
 }
 
@@ -815,7 +1008,10 @@ function focusTourist(docId, zoom) {
   } else {
     mapInstance.setView(t.location, targetZoom, { animate: true });
   }
-  if (marker) { try { marker.openPopup(); } catch (_) {} }
+  if (marker) { 
+    try { marker.openPopup(); } 
+    catch (_) {} 
+  }
 }
 
 // Add New Tourist Modal HTML
@@ -844,18 +1040,27 @@ const addTouristModalHTML = `
 
 // Modal functions for adding tourist
 function openAddTouristModal() {
-  document.getElementById('newEmail').value = '';
-  document.getElementById('addErrorMsg').textContent = '';
-  document.getElementById('addTouristModal').style.display = 'flex';
+  const modal = document.getElementById('addTouristModal');
+  const emailInput = document.getElementById('newEmail');
+  const errorMsg = document.getElementById('addErrorMsg');
+  
+  if (emailInput) emailInput.value = '';
+  if (errorMsg) errorMsg.textContent = '';
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeAddTouristModal() {
-  document.getElementById('addTouristModal').style.display = 'none';
+  const modal = document.getElementById('addTouristModal');
+  if (modal) modal.style.display = 'none';
 }
 
 async function createNewTourist() {
-  const email = document.getElementById('newEmail').value.trim();
+  const emailInput = document.getElementById('newEmail');
   const errorEl = document.getElementById('addErrorMsg');
+
+  if (!emailInput || !errorEl) return;
+
+  const email = emailInput.value.trim();
 
   if (!email || !email.includes('@')) {
     errorEl.textContent = 'Please enter a valid email address.';
@@ -895,33 +1100,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshDashboard();
 
-  // Header buttons
-  document.querySelectorAll('.btn.small')[0]?.addEventListener('click', refreshDashboard);
-  document.querySelector('.btn.logout')?.addEventListener('click', () => {
+  // Header buttons - Handle multiple .btn.small elements
+  const refreshBtns = document.querySelectorAll('.btn.small');
+  refreshBtns[0]?.addEventListener('click', refreshDashboard);
+  
+  const logoutBtn = document.querySelector('.btn.logout');
+  logoutBtn?.addEventListener('click', () => {
     localStorage.removeItem('isLoggedIn');
     window.location.href = 'login.html';
   });
 
   // Add New Tourist button
-  document.getElementById('addTouristBtn')?.addEventListener('click', openAddTouristModal);
+  const addTouristBtn = document.getElementById('addTouristBtn');
+  addTouristBtn?.addEventListener('click', openAddTouristModal);
 
   // Manage Safe Zones button
-  document.getElementById('manageSafeZonesBtn')?.addEventListener('click', openSafeZonesModal);
+  const manageSafeZonesBtn = document.getElementById('manageSafeZonesBtn');
+  manageSafeZonesBtn?.addEventListener('click', openSafeZonesModal);
 
   // Close add modal
-  document.getElementById('closeAddModalBtn')?.addEventListener('click', closeAddTouristModal);
-  document.getElementById('cancelAddBtn')?.addEventListener('click', closeAddTouristModal);
-  document.getElementById('addTouristModal')?.addEventListener('click', (e) => {
+  const closeAddModalBtn = document.getElementById('closeAddModalBtn');
+  closeAddModalBtn?.addEventListener('click', closeAddTouristModal);
+  
+  const cancelAddBtn = document.getElementById('cancelAddBtn');
+  cancelAddBtn?.addEventListener('click', closeAddTouristModal);
+  
+  const addTouristModal = document.getElementById('addTouristModal');
+  addTouristModal?.addEventListener('click', (e) => {
     if (e.target.id === 'addTouristModal') closeAddTouristModal();
   });
 
   // Create tourist
-  document.getElementById('createTouristBtn')?.addEventListener('click', createNewTourist);
+  const createTouristBtn = document.getElementById('createTouristBtn');
+  createTouristBtn?.addEventListener('click', createNewTourist);
 
   // Safe zones
-  document.getElementById('closeSafeZonesBtn')?.addEventListener('click', closeSafeZonesModal);
-  document.getElementById('saveSafeZoneBtn')?.addEventListener('click', saveZone);
-  document.getElementById('safeZonesModal')?.addEventListener('click', (e) => {
+  const closeSafeZonesBtn = document.getElementById('closeSafeZonesBtn');
+  closeSafeZonesBtn?.addEventListener('click', closeSafeZonesModal);
+  
+  const saveSafeZoneBtn = document.getElementById('saveSafeZoneBtn');
+  saveSafeZoneBtn?.addEventListener('click', saveZone);
+  
+  const safeZonesModal = document.getElementById('safeZonesModal');
+  safeZonesModal?.addEventListener('click', (e) => {
     if (e.target.id === 'safeZonesModal') closeSafeZonesModal();
   });
 
@@ -933,21 +1154,40 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Tourist modal buttons
-  document.getElementById('closeModalBtn')?.addEventListener('click', closeTouristModal);
-  document.getElementById('saveBtn')?.addEventListener('click', saveTouristChanges);
-  document.getElementById('contactBtn')?.addEventListener('click', contactTourist);
-  document.getElementById('trackBtn')?.addEventListener('click', trackTourist);
-  document.getElementById('deleteBtn')?.addEventListener('click', deleteTourist);
-  // If user manually refreshes, keep following current target if any
-  document.querySelectorAll('.btn.small')[0]?.addEventListener('click', () => {
-    // No-op: followTargetDocId is preserved
-  });
-  document.getElementById('touristModal')?.addEventListener('click', (e) => {
+  const closeModalBtn = document.getElementById('closeModalBtn');
+  closeModalBtn?.addEventListener('click', closeTouristModal);
+  
+  const saveBtn = document.getElementById('saveBtn');
+  saveBtn?.addEventListener('click', saveTouristChanges);
+  
+  const contactBtn = document.getElementById('contactBtn');
+  contactBtn?.addEventListener('click', contactTourist);
+  
+  const trackBtn = document.getElementById('trackBtn');
+  trackBtn?.addEventListener('click', trackTourist);
+  
+  const deleteBtn = document.getElementById('deleteBtn');
+  deleteBtn?.addEventListener('click', deleteTourist);
+  
+  const touristModal = document.getElementById('touristModal');
+  touristModal?.addEventListener('click', (e) => {
     if (e.target.id === 'touristModal') closeTouristModal();
   });
+
+  // Keyboard navigation
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && document.getElementById('touristModal').style.display === 'flex') {
-      closeTouristModal();
+    if (e.key === 'Escape') {
+      const touristModal = document.getElementById('touristModal');
+      const safeZonesModal = document.getElementById('safeZonesModal');
+      const addTouristModal = document.getElementById('addTouristModal');
+      
+      if (touristModal?.style.display === 'flex') {
+        closeTouristModal();
+      } else if (safeZonesModal?.style.display === 'flex') {
+        closeSafeZonesModal();
+      } else if (addTouristModal?.style.display === 'flex') {
+        closeAddTouristModal();
+      }
     }
   });
 });
