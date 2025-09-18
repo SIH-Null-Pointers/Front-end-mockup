@@ -8,32 +8,17 @@
   <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"></script>
   <script type="module" src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"></script>
 </head>
-<body class="login-page">
-  <section class="ts-hero" aria-label="TerraSafe login hero">
-    <h1 class="ts-brand">TerraSafe</h1>
-    <p class="ts-tagline">Where safety meets adventure</p>
-    <img class="ts-cloud ts-cloud--left" src="img/cloud.svg" alt="" aria-hidden="true">
-    <img class="ts-cloud ts-cloud--right" src="img/cloud.svg" alt="" aria-hidden="true">
-    <img class="ts-shrub ts-shrub--left" src="img/shrub-left.svg" alt="" aria-hidden="true">
-    <img class="ts-shrub ts-shrub--right" src="img/shrub-right.svg" alt="" aria-hidden="true">
-  </section>
-
-  <div class="login-container" role="main">
-    <div style="display: flex; align-items: center; margin-bottom: 10px; justify-content: center;">
-      <svg width="24" height="24" viewBox="0 0 139 139" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
-        <rect x="0" y="0" width="139" height="139" rx="20" fill="#2A7AB0"/>
-        <circle cx="69.5" cy="69.5" r="25" fill="white"/>
-      </svg>
-      <h2 style="margin: 0;">Admin Login</h2>
-    </div>
-    <form id="loginForm" class="login-form" autocomplete="on">
+<body>
+  <div class="login-container">
+    <h2>🔐 Admin Login</h2>
+    <form id="loginForm">
       <label>Email</label>
       <input type="email" id="email" placeholder="admin@example.com" required>
 
       <label>Password</label>
       <input type="password" id="password" placeholder="Enter password" required>
 
-      <button type="submit" class="btn blocky">Login</button>
+      <button type="submit" class="btn">Login</button>
     </form>
     <p id="errorMsg" class="error-msg"></p>
   </div>
