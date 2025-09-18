@@ -101,6 +101,18 @@ body {
   background: #c0392b;
 }
 
+.zone-toggle-btn {
+  background: #ecf0f1 !important;
+  color: #2c3e50 !important;
+  border: 1px solid #bdc3c7;
+}
+
+.zone-toggle-btn.active {
+  background: #3498db !important;
+  color: white !important;
+  border-color: #2980b9;
+}
+
 /* Status */
 .status {
   padding: 4px 8px;
@@ -416,6 +428,8 @@ body {
   max-width: calc(100% - 2rem);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   animation: fadeIn 0.2s ease;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 /* Panic modal tweaks */
@@ -429,10 +443,13 @@ body {
   justify-content: space-between;
   padding: 0.9rem 1rem;
   border-bottom: 1px solid #eee;
+  flex-shrink: 0;
 }
 
 .modal-body {
   padding: 1rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .modal-row {
@@ -464,6 +481,7 @@ body {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 0.8rem;
+  flex-shrink: 0;
 }
 
 /* Add New Tourist Modal */
@@ -480,61 +498,180 @@ body {
   color: #333;
 }
 
-/* Safe Zones Modal */
+/* Safe Zones Modal - FIXED LAYOUT */
 .safe-zones-modal {
-  width: 90vw;
-  max-width: 1200px;
-  height: 80vh;
-  max-height: 800px;
+  width: 95vw;
+  max-width: 1400px;
+  height: 90vh;
+  max-height: 95vh;
   display: flex;
   flex-direction: column;
+  margin: 0 auto;
+}
+
+.safe-zones-modal .modal-header {
+  padding: 1rem 1.5rem;
 }
 
 .safe-zones-content {
   display: flex;
   flex: 1;
   overflow: hidden;
+  height: calc(100% - 60px);
+  /* Account for header */
 }
 
-.safe-zones-list-panel {
+.zones-lists-panel {
   flex: 1;
-  padding: 1rem;
-  border-right: 1px solid #eee;
+  min-width: 300px;
+  max-width: 350px;
+  padding: 1.5rem;
+  border-right: 1px solid #e0e0e0;
   overflow-y: auto;
-  max-height: 100%;
+  background: #fafafa;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
-.safe-zones-list-panel h4 {
-  margin-top: 0;
-  color: #2ecc71;
-}
-
-.safe-zones-map-panel {
-  flex: 2;
-  padding: 1rem;
+.zones-section {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-#safeZonesList {
-  max-height: 60vh;
+.section-title {
+  margin: 0 0 1rem 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-title.safe-title {
+  color: #27ae60;
+}
+
+.section-title.unsafe-title {
+  color: #c0392b;
+}
+
+#safeZonesList,
+#unsafeZonesList {
+  flex: 1;
+  max-height: none;
   overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+#safeZonesList::-webkit-scrollbar,
+#unsafeZonesList::-webkit-scrollbar {
+  width: 4px;
+}
+
+#safeZonesList::-webkit-scrollbar-track,
+#unsafeZonesList::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+#safeZonesList::-webkit-scrollbar-thumb,
+#unsafeZonesList::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.safe-zones-map-panel {
+  flex: 2;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+.zone-type-toggle {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#safeZonesMap {
+  height: 550px;
+  /* Much bigger map */
+  width: 100%;
+  max-width: 800px;
+  /* Limit width for better proportions */
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.modal-row {
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 1rem;
+}
+
+.modal-row input {
+  width: 100%;
+  max-width: 300px;
+}
+
+.modal-actions {
+  width: 100%;
+  max-width: 300px;
+  justify-content: center;
 }
 
 .zone-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem;
-  margin-bottom: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.zone-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.zone-card.safe {
   background: #f0f9f0;
-  border-radius: 6px;
-  border: 1px solid #2ecc71;
+  border-color: #2ecc71;
+  color: #27ae60;
+}
+
+.zone-card.unsafe {
+  background: #fef2f2;
+  border-color: #e74c3c;
+  color: #c0392b;
 }
 
 .zone-card button {
-  font-size: 0.8rem;
-  padding: 2px 6px;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+#saveSafeZoneBtn {
+  min-width: 120px;
+  padding: 10px 20px;
+  font-size: 1rem;
 }
 
 #saveSafeZoneBtn:disabled {
@@ -549,4 +686,43 @@ body {
   color: #2ecc71;
   weight: 2;
   animation: pulseGreen 3s ease-in-out infinite;
+}
+
+.unsafe-zone-circle {
+  fill-opacity: 0.2;
+  stroke: #e74c3c;
+  color: #e74c3c;
+  weight: 2;
+  animation: pulseRed 2s ease-in-out infinite;
+}
+
+/* Custom marker for zone creation */
+.custom-marker {
+  background: transparent;
+  border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .safe-zones-modal {
+    width: 98vw;
+    height: 95vh;
+  }
+
+  .safe-zones-content {
+    flex-direction: column;
+  }
+
+  .zones-lists-panel {
+    min-width: auto;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1rem;
+  }
+
+  #safeZonesMap {
+    height: 400px;
+    max-width: none;
+  }
 }

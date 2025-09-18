@@ -75,6 +75,7 @@ app.post('/safe-zones', async (req, res) => {
       lat,
       lng,
       radius,
+      type: 'safe',
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
     const doc = await docRef.get();
@@ -92,6 +93,52 @@ app.delete('/safe-zones/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete safe zone' });
+  }
+});
+
+// Get unsafe zones
+app.get('/unsafe-zones', async (req, res) => {
+  try {
+    const snapshot = await admin.firestore().collection('unsafe_zones').get();
+    const zones = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.json(zones);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch unsafe zones' });
+  }
+});
+
+// Add unsafe zone
+app.post('/unsafe-zones', async (req, res) => {
+  const { lat, lng, radius } = req.body;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(radius)) {
+    return res.status(400).json({ error: 'Invalid lat, lng, or radius' });
+  }
+  try {
+    const docRef = await admin.firestore().collection('unsafe_zones').add({
+      lat,
+      lng,
+      radius,
+      type: 'unsafe',
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+    const doc = await docRef.get();
+    res.json({ ok: true, id: docRef.id, ...doc.data() });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add unsafe zone' });
+  }
+});
+
+// Delete unsafe zone
+app.delete('/unsafe-zones/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await admin.firestore().collection('unsafe_zones').doc(id).delete();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete unsafe zone' });
   }
 });
 
@@ -308,10 +355,20 @@ app.get('/stream', (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'safeZones', data: zones })}\n\n`);
   }, () => {});
 
+  // Unsafe zones listener
+  const unsafeZonesUnsub = admin.firestore().collection('unsafe_zones').onSnapshot(snapshot => {
+    const zones = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.write(`data: ${JSON.stringify({ type: 'unsafeZones', data: zones })}\n\n`);
+  }, () => {});
+
   req.on('close', () => {
     fsUnsub();
     panicUnsub();
     safeZonesUnsub();
+    unsafeZonesUnsub();
     rtdbRef.off('value', rtdbListener);
   });
 });
