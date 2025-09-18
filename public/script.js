@@ -5,6 +5,14 @@ let mapInstance;
 let touristMarkers = {}; // docId -> Marker
 let currentTouristDocId = null;
 
+// UX state for smoother map experience
+let mapInitialized = false;
+let userInteracting = false;
+let interactionCooldownTimer = null;
+let autoFocusTimer = null; // deprecated: no auto cycle
+let lastAutoFocusIndex = -1; // deprecated
+let followTargetDocId = null; // keep centering on this tourist across updates
+
 // Initialize EventSource for real-time updates
 const eventSource = new EventSource('http://localhost:3000/stream');
 
@@ -84,6 +92,9 @@ function renderTourists() {
       ${t.complaint > 0 ? `<p style="color: #e67e22;">⚠️ ${t.complaint} active complaint(s)</p>` : ''}
     `;
     card.addEventListener('click', () => openTouristModal(t.docId));
+    // Smooth hover focus on map
+    card.addEventListener('mouseenter', () => focusTourist(t.docId));
+    card.addEventListener('focus', () => focusTourist(t.docId));
     list.appendChild(card);
   });
 
@@ -109,35 +120,134 @@ function renderMap() {
   const mapContainer = document.getElementById('map');
   if (!mapContainer) return;
 
-  if (mapInstance) mapInstance.remove();
-  mapInstance = L.map('map').setView([20, 0], 2);
-  // Expose globally for other modules (e.g., realtime.js)
-  try { window.mapInstance = mapInstance; } catch (_) {}
+  // Initialize once, then update smoothly
+  if (!mapInitialized) {
+    mapInstance = L.map('map', {
+      zoomControl: true,
+      zoomAnimation: true,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      inertia: true,
+      inertiaDeceleration: 3000,
+      wheelDebounceTime: 50,
+      minZoom: 3,
+      worldCopyJump: true,
+    }).setView([23.5, 78.5], 4);
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap contributors',
-  }).addTo(mapInstance);
+    try { window.mapInstance = mapInstance; } catch (_) {}
 
-  const statusColors = {
-    normal: 'green',
-    abnormal: 'orange',
-    critical: 'red',
-  };
-
-  touristMarkers = {};
-  tourists.forEach(t => {
-    const marker = L.circleMarker(t.location, {
-      radius: 10,
-      fillColor: statusColors[t.status],
-      color: '#333',
-      weight: 1,
-      opacity: 1,
-      fillOpacity: 0.9,
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap contributors, © CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19
     }).addTo(mapInstance);
 
-    marker.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%`);
-    touristMarkers[t.docId] = marker;
+    // Track user interaction to avoid fighting with auto-fit
+    mapInstance.on('movestart', () => {
+      userInteracting = true;
+      if (interactionCooldownTimer) clearTimeout(interactionCooldownTimer);
+    });
+    mapInstance.on('moveend', () => {
+      if (interactionCooldownTimer) clearTimeout(interactionCooldownTimer);
+      interactionCooldownTimer = setTimeout(() => { userInteracting = false; }, 2500);
+    });
+
+    mapInitialized = true;
+    // Disable any previous auto-focus cycles if present
+    if (autoFocusTimer) { try { clearInterval(autoFocusTimer); } catch (_) {} autoFocusTimer = null; }
+  }
+
+  const statusColors = {
+    normal: '#2ecc71',
+    abnormal: '#f39c12',
+    critical: '#e74c3c',
+  };
+
+  // Update or create markers
+  const nextIds = new Set();
+  tourists.forEach(t => {
+    nextIds.add(t.docId);
+    const existing = touristMarkers[t.docId];
+    if (existing) {
+      // Smoothly move marker to new position
+      existing.setStyle({
+        fillColor: statusColors[t.status],
+        color: statusColors[t.status]
+      });
+      existing.setLatLng(t.location);
+    } else {
+      const marker = L.circleMarker(t.location, {
+        radius: 8,
+        fillColor: statusColors[t.status],
+        color: statusColors[t.status],
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.95,
+        className: `tourist-marker status-${t.status}`
+      }).addTo(mapInstance);
+      marker.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%`);
+      touristMarkers[t.docId] = marker;
+    }
   });
+
+  // Remove markers for tourists that no longer exist
+  Object.keys(touristMarkers).forEach(id => {
+    if (!nextIds.has(id)) {
+      try {
+        mapInstance.removeLayer(touristMarkers[id]);
+      } catch (_) {}
+      delete touristMarkers[id];
+      if (followTargetDocId === id) followTargetDocId = null;
+    }
+  });
+
+  // If following a panic alert center from realtime.js, honor it
+  try {
+    if (window.followAlertActive) {
+      const latInput = document.getElementById('panicLat');
+      const lngInput = document.getElementById('panicLng');
+      const lat = latInput ? Number(latInput.value) : null;
+      const lng = lngInput ? Number(lngInput.value) : null;
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        if (typeof mapInstance.flyTo === 'function') {
+          mapInstance.flyTo([lat, lng], Math.max(mapInstance.getZoom(), 13), { animate: true, duration: 0.6 });
+        } else {
+          mapInstance.setView([lat, lng], Math.max(mapInstance.getZoom(), 13), { animate: true });
+        }
+        return; // skip auto-fit while following alert
+      }
+    }
+  } catch (_) {}
+
+  // If following a specific tourist, keep centering on them and skip auto-fit
+  if (followTargetDocId && touristMarkers[followTargetDocId]) {
+    const latLng = touristMarkers[followTargetDocId].getLatLng();
+    if (typeof mapInstance.flyTo === 'function') {
+      mapInstance.flyTo(latLng, Math.max(mapInstance.getZoom(), 13), { animate: true, duration: 0.6 });
+    } else {
+      mapInstance.setView(latLng, Math.max(mapInstance.getZoom(), 13), { animate: true });
+    }
+    try { touristMarkers[followTargetDocId].openPopup(); } catch (_) {}
+    return;
+  }
+
+  // Auto-fit bounds if not interacting and we have multiple tourists
+  if (!userInteracting) {
+    const ids = Object.keys(touristMarkers);
+    if (ids.length === 1) {
+      const only = tourists.find(x => x.docId === ids[0]);
+      if (only) {
+        mapInstance.setView(only.location, Math.max(mapInstance.getZoom(), 6, 12), { animate: true });
+      }
+    } else if (ids.length > 1) {
+      const bounds = L.latLngBounds(ids.map(id => touristMarkers[id].getLatLng()));
+      try {
+        mapInstance.flyToBounds(bounds.pad(0.2), { animate: true, duration: 0.6 });
+      } catch (_) {
+        mapInstance.fitBounds(bounds.pad(0.2), { animate: true });
+      }
+    }
+  }
 }
 
 // Manual refresh fallback
@@ -312,9 +422,29 @@ function trackTourist() {
   if (!t || !mapInstance) return;
   const marker = touristMarkers[t.docId];
   if (marker) {
-    mapInstance.setView(t.location, 13);
+    if (typeof mapInstance.flyTo === 'function') {
+      mapInstance.flyTo(t.location, 13, { animate: true, duration: 0.8 });
+    } else {
+      mapInstance.setView(t.location, 13, { animate: true });
+    }
     marker.openPopup();
+    // Persist follow target so refreshes keep us on the same tourist
+    followTargetDocId = t.docId;
   }
+}
+
+// Smooth focus on hover over tourist cards
+function focusTourist(docId, zoom) {
+  const t = tourists.find(x => x.docId === docId);
+  if (!t || !mapInstance) return;
+  const marker = touristMarkers[docId];
+  const targetZoom = Number.isFinite(zoom) ? zoom : Math.max(mapInstance.getZoom(), 12);
+  if (typeof mapInstance.flyTo === 'function') {
+    mapInstance.flyTo(t.location, targetZoom, { animate: true, duration: 0.6 });
+  } else {
+    mapInstance.setView(t.location, targetZoom, { animate: true });
+  }
+  if (marker) { try { marker.openPopup(); } catch (_) {} }
 }
 
 // Add New Tourist Modal HTML
@@ -420,6 +550,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('contactBtn')?.addEventListener('click', contactTourist);
   document.getElementById('trackBtn')?.addEventListener('click', trackTourist);
   document.getElementById('deleteBtn')?.addEventListener('click', deleteTourist);
+  // If user manually refreshes, keep following current target if any
+  document.querySelector('.btn.small')?.addEventListener('click', () => {
+    // No-op: followTargetDocId is preserved
+  });
   document.getElementById('touristModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'touristModal') closeTouristModal();
   });

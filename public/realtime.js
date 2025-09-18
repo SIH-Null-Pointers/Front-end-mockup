@@ -78,6 +78,9 @@ document.getElementById('centerMapBtn')?.addEventListener('click', () => {
       const lat = Number(latEl.value);
       const lng = Number(lngEl.value);
       window.mapInstance.setView([lat, lng], 15);
+      try { window.followAlertActive = true; } catch (_) {}
+      // Auto close the panic alert after centering
+      hidePanicModal();
     }
   } catch (_) {}
 });
@@ -88,6 +91,7 @@ document.getElementById('cancelAlertBtn')?.addEventListener('click', async () =>
   try {
     await update(ref(db, currentAlertPath), { alertActive: false, status: 'cancelled' });
     errorEl.textContent = 'Alert cancelled.';
+    try { window.followAlertActive = false; } catch (_) {}
     setTimeout(hidePanicModal, 400);
   } catch (e) {
     errorEl.textContent = `❌ ${e.message || 'Failed to cancel alert'}`;
