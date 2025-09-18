@@ -1,4 +1,4 @@
-// tourist-management-dashboard/server.js
+tourist-management-dashboard/server.js
 const express = require('express');
 const admin = require('firebase-admin');
 const path = require('path');

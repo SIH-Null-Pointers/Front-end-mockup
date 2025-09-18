@@ -289,6 +289,15 @@ body {
   background: #d1ecf1;
 }
 
+/* Scrollable sections: Active Tourists and Activity Monitor */
+#touristList,
+#activityFeed {
+  max-height: 58vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Login Page */
 .login-container {
   width: 360px;
