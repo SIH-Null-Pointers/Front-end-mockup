@@ -158,6 +158,64 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+/* Polished Leaflet visuals */
+.leaflet-container {
+  outline: none;
+  background: #f7f9fc;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.leaflet-popup-tip {
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+}
+
+.leaflet-control-zoom a {
+  border-radius: 8px !important;
+}
+
+.leaflet-control-zoom a:hover {
+  transform: translateY(-1px);
+}
+
+/* Enhanced tourist markers */
+.tourist-marker {
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+}
+
+.tourist-marker.status-normal {
+  animation: pulseGreen 2.2s ease-in-out infinite;
+}
+
+.tourist-marker.status-abnormal {
+  animation: pulseOrange 2s ease-in-out infinite;
+}
+
+.tourist-marker.status-critical {
+  animation: pulseRed 1.6s ease-in-out infinite;
+}
+
+@keyframes pulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+}
+
+@keyframes pulseOrange {
+  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(243, 156, 18, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
+}
+
+@keyframes pulseRed {
+  0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+}
+
 /* Tourist Cards */
 .tourist-card {
   border: 1px solid #ddd;
