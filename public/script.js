@@ -11,10 +11,10 @@ const eventSource = new EventSource('http://localhost:3000/stream');
 eventSource.onmessage = (event) => {
   const update = JSON.parse(event.data);
   if (update.type === 'users') {
+    const prevOpen = currentTouristDocId;
     tourists = update.data.map(u => {
-      // Strictly use Firestore docId; ignore any top-level "id" field from user data
-      const docId = u.docId;
-      const displayId = u.userId || u.id || docId; // show-friendly; never used to save
+      const docId = u.docId || u.id;
+      const displayId = u.userId || u.id || docId;
       const latitude = u.location?.latitude ?? 0;
       const longitude = u.location?.longitude ?? 0;
       const safetyScore = u.safetyScore ?? 85;
@@ -30,10 +30,22 @@ eventSource.onmessage = (event) => {
         safetyScore,
         phone: u.phone || 'N/A',
       };
-    }).filter(t => !!t.docId); // drop any records without docId (safety)
+    }).filter(t => !!t.docId);
+
     renderTourists();
     renderMap();
     updateHeaderStats();
+
+    // If the modal is open, refresh the live lat/lng fields without allowing edits
+    if (prevOpen) {
+      const t = tourists.find(x => x.docId === prevOpen);
+      if (t) {
+        document.getElementById('modalLat')?.setAttribute('disabled', 'true');
+        document.getElementById('modalLng')?.setAttribute('disabled', 'true');
+        document.getElementById('modalLat').value = t.location?.[0] ?? 0;
+        document.getElementById('modalLng').value = t.location?.[1] ?? 0;
+      }
+    }
   } else if (update.type === 'panics') {
     activities = update.data.map(p => ({
       type: p.type,
@@ -131,17 +143,25 @@ function refreshDashboard() {
   fetch('http://localhost:3000/tourists')
     .then(res => res.json())
     .then(data => {
-      tourists = data.map(u => ({
-        docId: u.docId, // strictly use docId
-        displayId: u.userId || u.id || u.docId,
-        name: u.name || 'Unknown',
-        country: u.nationality || 'N/A',
-        safetyScore: u.safetyScore ?? 85,
-        status: (u.safetyScore ?? 85) > 80 ? 'normal' : (u.safetyScore ?? 85) > 60 ? 'abnormal' : 'critical',
-        location: [u.location?.latitude ?? 0, u.location?.longitude ?? 0],
-        complaint: u.complaints || 0,
-        phone: u.phone || 'N/A',
-      })).filter(t => !!t.docId);
+      tourists = data.map(u => {
+        const docId = u.docId || u.id;
+        const displayId = u.userId || u.id || docId;
+        const latitude = u.location?.latitude ?? 0;
+        const longitude = u.location?.longitude ?? 0;
+        const safetyScore = u.safetyScore ?? 85;
+        const status = safetyScore > 80 ? 'normal' : safetyScore > 60 ? 'abnormal' : 'critical';
+        return {
+          docId,
+          displayId,
+          name: u.name || 'Unknown',
+          country: u.nationality || 'N/A',
+          status,
+          location: [latitude, longitude],
+          complaint: u.complaints || 0,
+          safetyScore,
+          phone: u.phone || 'N/A',
+        };
+      }).filter(t => !!t.docId);
       renderTourists();
       renderMap();
       updateHeaderStats();
@@ -167,11 +187,15 @@ function openTouristModal(docId) {
   if (!t) return;
 
   document.getElementById('modalTitle').textContent = `Tourist: ${t.name}`;
-  document.getElementById('modalId').value = t.displayId; // friendly display
+  document.getElementById('modalId').value = t.displayId;
   document.getElementById('modalName').value = t.name || '';
   document.getElementById('modalCountry').value = t.country || '';
   document.getElementById('modalPhone').value = t.phone || '';
   document.getElementById('modalSafety').value = t.safetyScore ?? 0;
+
+  // Lat/Lng are read-only and driven by RTDB; fill current values
+  document.getElementById('modalLat').setAttribute('disabled', 'true');
+  document.getElementById('modalLng').setAttribute('disabled', 'true');
   document.getElementById('modalLat').value = t.location?.[0] ?? 0;
   document.getElementById('modalLng').value = t.location?.[1] ?? 0;
   document.getElementById('modalError').textContent = '';
@@ -192,17 +216,16 @@ async function saveTouristChanges() {
   const country = document.getElementById('modalCountry').value.trim();
   const phone = document.getElementById('modalPhone').value.trim();
   const safetyScore = Number(document.getElementById('modalSafety').value);
-  const lat = Number(document.getElementById('modalLat').value);
-  const lng = Number(document.getElementById('modalLng').value);
 
   const errorEl = document.getElementById('modalError');
   errorEl.textContent = '';
 
-  if (Number.isNaN(safetyScore) || safetyScore < 0 || safetyScore > 100) {
+  if (!Number.isFinite(safetyScore) || safetyScore < 0 || safetyScore > 100) {
     errorEl.textContent = 'Safety score must be between 0 and 100.';
     return;
   }
   try {
+    // Do NOT send location; it is controlled by RTDB/device
     const res = await fetch(`/tourists/${encodeURIComponent(currentTouristDocId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -210,8 +233,7 @@ async function saveTouristChanges() {
         name,
         nationality: country,
         phone,
-        safetyScore,
-        location: { latitude: lat, longitude: lng }
+        safetyScore
       })
     });
     if (!res.ok) {
