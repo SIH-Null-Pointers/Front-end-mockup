@@ -24,7 +24,8 @@ app.get('/login', (req, res) => {
 app.get('/tourists', async (req, res) => {
   try {
     const snapshot = await admin.firestore().collection('users').get();
-    const tourists = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Always send the Firestore document ID as docId, keep other fields as-is
+    const tourists = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
     res.json(tourists);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tourists' });
@@ -50,6 +51,36 @@ app.get('/activities', async (req, res) => {
   }
 });
 
+// Update tourist - only update existing docs; return 404 if doc doesn't exist
+app.put('/tourists/:docId', async (req, res) => {
+  const { docId } = req.params;
+  const { name, nationality, phone, safetyScore, location } = req.body || {};
+  try {
+    const ref = admin.firestore().collection('users').doc(docId);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      return res.status(404).json({ error: `Tourist document ${docId} not found` });
+    }
+
+    const update = {};
+    if (name !== undefined) update.name = name;
+    if (nationality !== undefined) update.nationality = nationality;
+    if (phone !== undefined) update.phone = phone;
+    if (safetyScore !== undefined) update.safetyScore = Number(safetyScore);
+    if (location && typeof location === 'object') {
+      update.location = {
+        latitude: Number(location.latitude) || 0,
+        longitude: Number(location.longitude) || 0
+      };
+    }
+
+    await ref.set(update, { merge: true });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update tourist' });
+  }
+});
+
 // SSE for real-time updates
 app.get('/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
@@ -57,7 +88,7 @@ app.get('/stream', (req, res) => {
   res.setHeader('Connection', 'keep-alive');
 
   const usersUnsub = admin.firestore().collection('users').onSnapshot(snapshot => {
-    const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const users = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
     res.write(`data: ${JSON.stringify({ type: 'users', data: users })}\n\n`);
   });
 
