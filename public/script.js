@@ -181,6 +181,7 @@ function refreshDashboard() {
 function getTouristByDocId(docId) {
   return tourists.find(t => t.docId === docId);
 }
+
 function openTouristModal(docId) {
   currentTouristDocId = docId;
   const t = getTouristByDocId(docId);
@@ -200,12 +201,18 @@ function openTouristModal(docId) {
   document.getElementById('modalLng').value = t.location?.[1] ?? 0;
   document.getElementById('modalError').textContent = '';
 
+  // Show delete button
+  document.getElementById('deleteBtn').style.display = 'block';
+
   document.getElementById('touristModal').style.display = 'flex';
 }
+
 function closeTouristModal() {
   currentTouristDocId = null;
   document.getElementById('touristModal').style.display = 'none';
+  document.getElementById('deleteBtn').style.display = 'none';
 }
+
 async function saveTouristChanges() {
   if (!currentTouristDocId) {
     const errorEl = document.getElementById('modalError');
@@ -245,6 +252,49 @@ async function saveTouristChanges() {
     errorEl.textContent = `❌ ${e.message}`;
   }
 }
+
+async function deleteTourist() {
+  if (!currentTouristDocId) {
+    const errorEl = document.getElementById('modalError');
+    errorEl.textContent = 'Cannot delete: missing document reference.';
+    return;
+  }
+
+  const t = getTouristByDocId(currentTouristDocId);
+  if (!t) {
+    const errorEl = document.getElementById('modalError');
+    errorEl.textContent = 'Tourist not found.';
+    return;
+  }
+
+  // Confirm deletion
+  if (!confirm(`Are you sure you want to delete tourist "${t.name}" (${t.displayId})? This action cannot be undone.`)) {
+    return;
+  }
+
+  const errorEl = document.getElementById('modalError');
+  errorEl.textContent = 'Deleting tourist...';
+
+  try {
+    const res = await fetch(`/tourists/${encodeURIComponent(currentTouristDocId)}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to delete tourist');
+    }
+
+    alert('Tourist deleted successfully.');
+    closeTouristModal();
+    refreshDashboard(); // Refresh to update UI
+  } catch (e) {
+    errorEl.textContent = `❌ ${e.message}`;
+  }
+}
+
 function contactTourist() {
   const t = currentTouristDocId ? getTouristByDocId(currentTouristDocId) : null;
   if (t?.phone && t.phone !== 'N/A') {
@@ -254,6 +304,7 @@ function contactTourist() {
     errorEl.textContent = 'No phone number available.';
   }
 }
+
 function trackTourist() {
   const t = currentTouristDocId ? getTouristByDocId(currentTouristDocId) : null;
   if (!t || !mapInstance) return;
@@ -264,24 +315,109 @@ function trackTourist() {
   }
 }
 
+// Add New Tourist Modal HTML
+const addTouristModalHTML = `
+<div id="addTouristModal" class="modal-overlay" style="display: none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add New Tourist</h3>
+      <button id="closeAddModalBtn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Enter the email address to create a new tourist account. A password reset email will be sent automatically.</p>
+      <div class="modal-row">
+        <label for="newEmail">Email Address</label>
+        <input type="email" id="newEmail" placeholder="user@example.com" required>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancelAddBtn">Cancel</button>
+        <button class="btn small" id="createTouristBtn">Create</button>
+      </div>
+      <p id="addErrorMsg" style="color: red; font-size: 0.9rem; margin-top: 0.5rem;"></p>
+    </div>
+  </div>
+</div>
+`;
+
+// Modal functions for adding tourist
+function openAddTouristModal() {
+  document.getElementById('newEmail').value = '';
+  document.getElementById('addErrorMsg').textContent = '';
+  document.getElementById('addTouristModal').style.display = 'flex';
+}
+
+function closeAddTouristModal() {
+  document.getElementById('addTouristModal').style.display = 'none';
+}
+
+async function createNewTourist() {
+  const email = document.getElementById('newEmail').value.trim();
+  const errorEl = document.getElementById('addErrorMsg');
+
+  if (!email || !email.includes('@')) {
+    errorEl.textContent = 'Please enter a valid email address.';
+    return;
+  }
+
+  try {
+    const res = await fetch('/add-tourist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to create tourist');
+    }
+
+    alert('Tourist created successfully! Password reset email sent.');
+    closeAddTouristModal();
+    refreshDashboard(); // Refresh to show new user
+  } catch (e) {
+    errorEl.textContent = `❌ ${e.message}`;
+  }
+}
+
 // Initial load and wire up buttons
 document.addEventListener('DOMContentLoaded', () => {
   if (localStorage.getItem('isLoggedIn') !== 'true') {
     window.location.href = 'login.html';
     return;
   }
+
+  // Append add tourist modal
+  document.body.insertAdjacentHTML('beforeend', addTouristModalHTML);
+
   refreshDashboard();
 
+  // Header buttons
   document.querySelector('.btn.small')?.addEventListener('click', refreshDashboard);
   document.querySelector('.btn.logout')?.addEventListener('click', () => {
     localStorage.removeItem('isLoggedIn');
     window.location.href = 'login.html';
   });
 
+  // Add New Tourist button
+  document.getElementById('addTouristBtn')?.addEventListener('click', openAddTouristModal);
+
+  // Close add modal
+  document.getElementById('closeAddModalBtn')?.addEventListener('click', closeAddTouristModal);
+  document.getElementById('cancelAddBtn')?.addEventListener('click', closeAddTouristModal);
+  document.getElementById('addTouristModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'addTouristModal') closeAddTouristModal();
+  });
+
+  // Create tourist
+  document.getElementById('createTouristBtn')?.addEventListener('click', createNewTourist);
+
+  // Tourist modal buttons
   document.getElementById('closeModalBtn')?.addEventListener('click', closeTouristModal);
   document.getElementById('saveBtn')?.addEventListener('click', saveTouristChanges);
   document.getElementById('contactBtn')?.addEventListener('click', contactTourist);
   document.getElementById('trackBtn')?.addEventListener('click', trackTourist);
+  document.getElementById('deleteBtn')?.addEventListener('click', deleteTourist);
   document.getElementById('touristModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'touristModal') closeTouristModal();
   });

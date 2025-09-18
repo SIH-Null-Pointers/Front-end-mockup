@@ -94,6 +94,125 @@ app.put('/tourists/:docId', async (req, res) => {
   }
 });
 
+// Delete tourist - removes from Firestore and Firebase Auth
+app.delete('/tourists/:docId', async (req, res) => {
+  const { docId } = req.params;
+  
+  if (!docId) {
+    return res.status(400).json({ error: 'Document ID is required' });
+  }
+
+  try {
+    // First, get the user document to extract UID for Auth deletion
+    const userDoc = await admin.firestore().collection('users').doc(docId).get();
+    
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: `Tourist document ${docId} not found` });
+    }
+
+    const userData = userDoc.data();
+    const uid = userData.userId || docId; // Use userId from document or fallback to docId
+    const userName = userData.name || 'Unknown';
+
+    // Get panic logs BEFORE starting transaction (all reads first)
+    const panicLogsQuery = admin.firestore().collection('panic_logs')
+      .where('userId', '==', uid);
+    const panicLogsSnapshot = await panicLogsQuery.get();
+    const panicLogRefs = panicLogsSnapshot.docs.map(doc => doc.ref);
+
+    // Now start transaction with all reads completed
+    await admin.firestore().runTransaction(async (transaction) => {
+      // Delete Firestore user document
+      transaction.delete(admin.firestore().collection('users').doc(docId));
+      
+      // Delete all associated panic logs
+      panicLogRefs.forEach(ref => {
+        transaction.delete(ref);
+      });
+    });
+
+    // Delete from Firebase Authentication (this is async and may take time)
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log(`Successfully deleted Auth user: ${uid}`);
+    } catch (authError) {
+      console.warn(`Failed to delete Auth user ${uid}:`, authError.message);
+      // Don't fail the entire operation if Auth deletion fails
+    }
+
+    // Remove from RTDB if present
+    try {
+      await admin.database().ref(`users/${docId}`).remove();
+      console.log(`Successfully removed from RTDB: ${docId}`);
+    } catch (rtdbError) {
+      console.warn(`Failed to remove from RTDB ${docId}:`, rtdbError.message);
+    }
+
+    res.json({ 
+      ok: true, 
+      message: `Tourist ${userName} deleted successfully` 
+    });
+  } catch (error) {
+    console.error('Error deleting tourist:', error);
+    res.status(500).json({ error: 'Failed to delete tourist: ' + error.message });
+  }
+});
+
+// Add new tourist: create Auth user with temporary password and send reset email
+app.post('/add-tourist', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    // Create user with temporary password
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: 'TempPass123!', // Temporary password
+      emailVerified: false
+    });
+
+    // Generate password reset link and send email manually
+    const resetLink = await admin.auth().generatePasswordResetLink(email);
+    
+    // Send the password reset email
+    const actionCodeSettings = {
+      url: resetLink, // This will be the deep link
+      handleCodeInApp: true
+    };
+
+    await admin.auth().sendPasswordResetEmail(email, actionCodeSettings);
+
+    // Create initial Firestore user doc
+    await admin.firestore().collection('users').doc(userRecord.uid).set({
+      userId: userRecord.uid,
+      email: email,
+      name: 'New Tourist',
+      nationality: 'N/A',
+      phone: 'N/A',
+      safetyScore: 85,
+      location: { latitude: 0, longitude: 0 },
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    res.json({ 
+      ok: true, 
+      uid: userRecord.uid,
+      message: 'Tourist created successfully. Password reset email sent.'
+    });
+  } catch (error) {
+    console.error('Error creating tourist:', error);
+    if (error.code === 'auth/email-already-exists') {
+      res.status(409).json({ error: 'Email already registered' });
+    } else if (error.code === 'auth/invalid-email') {
+      res.status(400).json({ error: 'Invalid email address' });
+    } else {
+      res.status(500).json({ error: 'Failed to create tourist: ' + error.message });
+    }
+  }
+});
+
 function SafetyScoreIsValid(v) {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 && n <= 100;

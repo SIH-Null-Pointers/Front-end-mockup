@@ -3,62 +3,76 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Tourist Management System</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tourist Management System Admin Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 
 <body>
-  <header class="header">
-    <h2><i class="fa-solid fa-globe"></i> Tourist Management System <span class="sub">Admin Dashboard</span></h2>
-    <div class="header-actions">
+  <div class="topbar">
+    <div class="title">
+      Tourist Safety Dashboard <span>Real-time monitoring</span>
+    </div>
+    <div class="status-bar">
       <span class="status active">4 Active</span>
       <span class="status abnormal">1 Abnormal</span>
       <span class="status critical">1 Critical</span>
-      <span>Welcome, admin</span>
-      <button class="btn small">⟳ Refresh</button>
+      <span class="welcome">Welcome, admin</span>
+    </div>
+  </div>
+
+  <div class="header">
+    <div>
+      <h1>Tourist Management System</h1>
+      <p class="sub">Monitor tourist safety and location in real-time</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn small" onclick="refreshDashboard()">⟳ Refresh</button>
+      <button class="btn small" id="addTouristBtn">➕ Add New Tourist</button>
       <button class="btn logout">Logout</button>
     </div>
-  </header>
+  </div>
 
-  <main class="dashboard-grid">
-    <!-- Left Panel: Tourists -->
-    <section class="panel">
-      <h3><i class="fa-solid fa-users"></i> Active Tourists (<span id="touristCount">0</span>)</h3>
+  <div class="dashboard-grid">
+    <!-- Left Panel - Tourist List -->
+    <div class="panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3>Active Tourists (<span id="touristCount">0</span>)</h3>
+      </div>
       <div id="touristList"></div>
-    </section>
+    </div>
 
-    <!-- Center Panel: Map -->
-    <section class="panel map-panel">
+    <!-- Middle Panel - Map -->
+    <div class="panel map-panel">
       <h3>🗺️ Real-Time Map</h3>
       <div id="map"></div>
-    </section>
+    </div>
 
-    <!-- Right Panel: Activity Monitor -->
-    <section class="panel">
-      <h3><i class="fa-solid fa-wave-square"></i> Activity Monitor</h3>
+    <!-- Right Panel - Activity Feed -->
+    <div class="panel">
       <div class="activity-summary">
-        <span class="summary critical">1 Critical</span>
-        <span class="summary warning">2 Warnings</span>
-        <span class="summary info">1 Info</span>
-        <button class="btn small" onclick="refreshDashboard()">⟳ Refresh</button>
+        <div class="summary critical">1 Critical</div>
+        <div class="summary warning">2 Warnings</div>
+        <div class="summary info">1 Info</div>
       </div>
+      <h3>Activity Monitor</h3>
       <div id="activityFeed"></div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <!-- Tourist Details Modal -->
-  <div id="touristModal" class="modal-overlay" style="display:none;">
+  <div id="touristModal" class="modal-overlay" style="display: none;">
     <div class="modal">
       <div class="modal-header">
         <h3 id="modalTitle">Tourist Details</h3>
-        <button class="btn small" id="closeModalBtn">✕</button>
+        <button id="closeModalBtn">✕</button>
       </div>
       <div class="modal-body">
         <div class="modal-row">
           <label>ID</label>
-          <input type="text" id="modalId" disabled>
+          <input type="text" id="modalId" readonly>
         </div>
         <div class="modal-row">
           <label>Name</label>
@@ -70,7 +84,7 @@
         </div>
         <div class="modal-row">
           <label>Phone</label>
-          <input type="text" id="modalPhone">
+          <input type="tel" id="modalPhone">
         </div>
         <div class="modal-row">
           <label>Safety Score</label>
@@ -79,21 +93,46 @@
         <div class="modal-row">
           <label>Location (lat, lng) — live from device</label>
           <div class="split">
-            <input type="number" id="modalLat" step="0.000001" disabled>
-            <input type="number" id="modalLng" step="0.000001" disabled>
+            <input type="number" id="modalLat" step="any" readonly>
+            <input type="number" id="modalLng" step="any" readonly>
           </div>
         </div>
+        <p id="modalError" style="color: red; font-size: 0.9rem;"></p>
         <div class="modal-actions">
-          <button class="btn small" id="contactBtn">Contact</button>
-          <button class="btn small" id="trackBtn">Track Tourist</button>
-          <button class="btn logout" id="saveBtn">Save Changes</button>
+          <button class="btn delete" id="deleteBtn">🗑️ Delete</button>
+          <button class="btn" id="contactBtn">📞 Contact</button>
+          <button class="btn" id="trackBtn">📍 Track</button>
+          <button class="btn small" id="saveBtn">Save Changes</button>
         </div>
-        <div id="modalError" class="error-msg"></div>
       </div>
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Add New Tourist Modal -->
+  <div id="addTouristModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Tourist</h3>
+        <button id="closeAddModalBtn"
+          style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Enter the email address to create a new tourist account. A password reset email will be sent automatically.
+        </p>
+        <div class="modal-row">
+          <label for="newEmail">Email Address</label>
+          <input type="email" id="newEmail" placeholder="user@example.com" required>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="cancelAddBtn">Cancel</button>
+          <button class="btn small" id="createTouristBtn">Create</button>
+        </div>
+        <p id="addErrorMsg" style="color: red; font-size: 0.9rem; margin-top: 0.5rem;"></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
 </body>
 
