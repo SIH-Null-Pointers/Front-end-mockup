@@ -170,7 +170,7 @@ body {
 }
 
 .leaflet-popup-tip {
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
 }
 
 .leaflet-control-zoom a {
@@ -183,7 +183,7 @@ body {
 
 /* Enhanced tourist markers */
 .tourist-marker {
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
 }
 
 .tourist-marker.status-normal {
@@ -199,21 +199,45 @@ body {
 }
 
 @keyframes pulseGreen {
-  0% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.45); }
-  70% { box-shadow: 0 0 0 12px rgba(46, 204, 113, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(46, 204, 113, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.45);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgba(46, 204, 113, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
 }
 
 @keyframes pulseOrange {
-  0% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.45); }
-  70% { box-shadow: 0 0 0 12px rgba(243, 156, 18, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(243, 156, 18, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.45);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgba(243, 156, 18, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0);
+  }
 }
 
 @keyframes pulseRed {
-  0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.45); }
-  70% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.45);
+  }
+
+  70% {
+    box-shadow: 0 0 0 12px rgba(231, 76, 60, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
 }
 
 /* Tourist Cards */
@@ -454,4 +478,75 @@ body {
 #addTouristModal h3 {
   margin-top: 0;
   color: #333;
+}
+
+/* Safe Zones Modal */
+.safe-zones-modal {
+  width: 90vw;
+  max-width: 1200px;
+  height: 80vh;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+}
+
+.safe-zones-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.safe-zones-list-panel {
+  flex: 1;
+  padding: 1rem;
+  border-right: 1px solid #eee;
+  overflow-y: auto;
+  max-height: 100%;
+}
+
+.safe-zones-list-panel h4 {
+  margin-top: 0;
+  color: #2ecc71;
+}
+
+.safe-zones-map-panel {
+  flex: 2;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+#safeZonesList {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.zone-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  background: #f0f9f0;
+  border-radius: 6px;
+  border: 1px solid #2ecc71;
+}
+
+.zone-card button {
+  font-size: 0.8rem;
+  padding: 2px 6px;
+}
+
+#saveSafeZoneBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Safe zone circles on map */
+.safe-zone-circle {
+  fill-opacity: 0.3;
+  stroke: #2ecc71;
+  color: #2ecc71;
+  weight: 2;
+  animation: pulseGreen 3s ease-in-out infinite;
 }

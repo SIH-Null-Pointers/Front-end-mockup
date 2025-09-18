@@ -1,4 +1,4 @@
-tourist-management-dashboard/server.js
+// tourist-management-dashboard/server.js
 const express = require('express');
 const admin = require('firebase-admin');
 const path = require('path');
@@ -47,6 +47,51 @@ app.get('/tourists', async (req, res) => {
     res.json(tourists);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tourists' });
+  }
+});
+
+// Get safe zones
+app.get('/safe-zones', async (req, res) => {
+  try {
+    const snapshot = await admin.firestore().collection('safe_zones').get();
+    const zones = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.json(zones);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch safe zones' });
+  }
+});
+
+// Add safe zone
+app.post('/safe-zones', async (req, res) => {
+  const { lat, lng, radius } = req.body;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(radius)) {
+    return res.status(400).json({ error: 'Invalid lat, lng, or radius' });
+  }
+  try {
+    const docRef = await admin.firestore().collection('safe_zones').add({
+      lat,
+      lng,
+      radius,
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    });
+    const doc = await docRef.get();
+    res.json({ ok: true, id: docRef.id, ...doc.data() });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to add safe zone' });
+  }
+});
+
+// Delete safe zone
+app.delete('/safe-zones/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await admin.firestore().collection('safe_zones').doc(id).delete();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete safe zone' });
   }
 });
 
@@ -254,9 +299,19 @@ app.get('/stream', (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'panics', data: panics })}\n\n`);
   }, () => {});
 
+  // Safe zones listener
+  const safeZonesUnsub = admin.firestore().collection('safe_zones').onSnapshot(snapshot => {
+    const zones = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    res.write(`data: ${JSON.stringify({ type: 'safeZones', data: zones })}\n\n`);
+  }, () => {});
+
   req.on('close', () => {
     fsUnsub();
     panicUnsub();
+    safeZonesUnsub();
     rtdbRef.off('value', rtdbListener);
   });
 });
