@@ -2,8 +2,8 @@
 body {
   margin: 0;
   font-family: "Segoe UI", sans-serif;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #2c3e50;
+  background: #f2f6f2;
+  color: #163b35;
   min-height: 100vh;
 }
 
@@ -12,8 +12,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #6a11cb, #2575fc);
-  color: white;
+  background: linear-gradient(135deg, #1f5a4c, #2a9d8f);
+  color: #ffffff;
   padding: 0.8rem 1.2rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
@@ -47,8 +47,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #2c3e50;
-  color: white;
+  background: #163b35;
+  color: #e8f5f2;
   padding: 1rem;
   border-radius: 0 0 12px 12px;
 }
@@ -75,12 +75,12 @@ body {
 }
 
 .btn.small {
-  background: #3498db;
-  color: white;
+  background: #2a9d8f;
+  color: #ffffff;
 }
 
 .btn.small:hover {
-  background: #2980b9;
+  background: #23867a;
 }
 
 .btn.logout {
@@ -99,29 +99,6 @@ body {
 
 .btn.delete:hover {
   background: #c0392b;
-}
-
-.search-btn {
-  background: #95a5a6;
-  color: white;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-}
-
-.search-btn:hover {
-  background: #7f8c8d;
-}
-
-.zone-toggle-btn {
-  background: #ecf0f1 !important;
-  color: #2c3e50 !important;
-  border: 1px solid #bdc3c7;
-}
-
-.zone-toggle-btn.active {
-  background: #3498db !important;
-  color: white !important;
-  border-color: #2980b9;
 }
 
 /* Status */
@@ -155,6 +132,20 @@ body {
   padding: 1rem;
 }
 
+/* Forest background behind dashboard */
+.dashboard-background {
+  background-image: url('img/bg-forest.svg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+}
+
+/* Make panels pop against detailed bg */
+.dashboard-background .panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+}
+
 /* Panels */
 .panel {
   background: #fff;
@@ -181,113 +172,6 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Polished Leaflet visuals */
-.leaflet-container {
-  outline: none;
-  background: #f7f9fc;
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 10px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
-}
-
-.leaflet-popup-tip {
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
-}
-
-.leaflet-control-zoom a {
-  border-radius: 8px !important;
-}
-
-.leaflet-control-zoom a:hover {
-  transform: translateY(-1px);
-}
-
-/* Geocoder Search Control */
-.leaflet-control-geocoder {
-  border-radius: 8px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-}
-
-.leaflet-control-geocoder .leaflet-control-geocoder-form,
-.leaflet-control-geocoder .leaflet-control-geocoder-list {
-  border-radius: 6px !important;
-}
-
-.leaflet-control-geocoder-list {
-  max-height: 200px !important;
-  overflow-y: auto !important;
-}
-
-.leaflet-control-geocoder-result {
-  padding: 8px 12px !important;
-  border-bottom: 1px solid #eee !important;
-}
-
-.leaflet-control-geocoder-result:hover {
-  background: #f5f5f5 !important;
-}
-
-/* Enhanced tourist markers */
-.tourist-marker {
-  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.2));
-}
-
-.tourist-marker.status-normal {
-  animation: pulseGreen 2.2s ease-in-out infinite;
-}
-
-.tourist-marker.status-abnormal {
-  animation: pulseOrange 2s ease-in-out infinite;
-}
-
-.tourist-marker.status-critical {
-  animation: pulseRed 1.6s ease-in-out infinite;
-}
-
-@keyframes pulseGreen {
-  0% {
-    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.45);
-  }
-
-  70% {
-    box-shadow: 0 0 0 12px rgba(46, 204, 113, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
-  }
-}
-
-@keyframes pulseOrange {
-  0% {
-    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0.45);
-  }
-
-  70% {
-    box-shadow: 0 0 0 12px rgba(243, 156, 18, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(243, 156, 18, 0);
-  }
-}
-
-@keyframes pulseRed {
-  0% {
-    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.45);
-  }
-
-  70% {
-    box-shadow: 0 0 0 12px rgba(231, 76, 60, 0);
-  }
-
-  100% {
-    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
-  }
-}
-
 /* Tourist Cards */
 .tourist-card {
   border: 1px solid #ddd;
@@ -295,11 +179,30 @@ body {
   padding: 0.9rem;
   margin-bottom: 0.9rem;
   transition: 0.3s ease;
+  cursor: pointer;
+  border-left: 3px solid transparent;
 }
 
 .tourist-card:hover {
   background: #f9f9ff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.tourist-card .tourist-name {
+  color: #2A7AB0;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+
+.tourist-card .tourist-name:hover {
+  color: #1c5a85;
+}
+
+.tourist-card.selected {
+  border-left: 3px solid #2A7AB0;
+  background-color: #f0f7ff;
 }
 
 .tourist-card h4 {
@@ -310,6 +213,19 @@ body {
   font-size: 12px;
   padding: 3px 7px;
   margin-left: 6px;
+}
+
+/* Make tourist name look clickable */
+.tourist-card .tourist-name {
+  color: #2A7AB0;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.tourist-card .tourist-name:hover {
+  text-decoration: underline;
+  color: #1c5a85;
 }
 
 /* Activity Feed */
@@ -344,37 +260,52 @@ body {
 
 .activity-card {
   border-radius: 8px;
-  padding: 0.7rem;
-  margin-bottom: 0.6rem;
-  font-size: 14px;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  background: #f5f9fc;
+  border-left: 3px solid #2a9d8f;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.activity-card .icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.activity-card .content {
+  flex: 1;
+}
+
+.activity-card .time {
+  font-size: 10px;
+  color: #6c757d;
+  margin-left: 4px;
 }
 
 .activity-card.critical {
-  background: #f8d7da;
+  border-left-color: #e74c3c;
 }
 
 .activity-card.warning {
-  background: #fff3cd;
+  border-left-color: #f39c12;
 }
 
 .activity-card.info {
-  background: #d1ecf1;
-}
-
-/* Scrollable sections: Active Tourists and Activity Monitor */
-#touristList,
-#activityFeed {
-  max-height: 58vh;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  border-left-color: #3498db;
 }
 
 /* Login Page */
 .login-container {
   width: 360px;
-  margin: 8% auto;
-  background: #fff;
+  margin: 2rem auto;
+  background: #ffffff;
   padding: 2.5rem;
   border-radius: 16px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
@@ -385,7 +316,7 @@ body {
 .login-container h2 {
   margin-bottom: 1.5rem;
   font-size: 1.6rem;
-  color: #333;
+  color: #163b35;
 }
 
 .login-container label {
@@ -405,8 +336,8 @@ body {
 }
 
 .login-container input:focus {
-  border: 1px solid #667eea;
-  box-shadow: 0 0 8px rgba(102, 126, 234, 0.5);
+  border: 1px solid #2a9d8f;
+  box-shadow: 0 0 8px rgba(42, 157, 143, 0.45);
 }
 
 .login-container button {
@@ -414,8 +345,8 @@ body {
   padding: 12px;
   margin-top: 1.5rem;
   border: none;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
+  background: linear-gradient(135deg, #2a9d8f, #1f5a4c);
+  color: #ffffff;
   font-size: 1rem;
   font-weight: bold;
   border-radius: 8px;
@@ -424,9 +355,47 @@ body {
 }
 
 .login-container button:hover {
-  background: linear-gradient(135deg, #764ba2, #667eea);
+  background: linear-gradient(135deg, #23867a, #184b40);
   transform: scale(1.02);
 }
+
+/* Blocky login look */
+.login-page {
+  background-image: url('img/bg-forest.svg');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+}
+
+.login-page .login-container {
+  border-radius: 12px;
+  box-shadow: 0 12px 0 #0e2a24, 0 0 0 4px #163b35 inset;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+}
+.login-form label {
+  font-weight: 900;
+  letter-spacing: .02em;
+}
+.login-form input {
+  background: #f6fbf9;
+  border: 2px solid #163b35;
+  border-radius: 8px;
+}
+.login-form input:focus {
+  outline: none;
+  border-color: #0e2a24;
+  box-shadow: 0 0 0 3px #bfe6dd;
+}
+.btn.blocky {
+  border-radius: 10px;
+  border: 2px solid #0e2a24;
+  background: #cfeae4;
+  color: #0e2a24;
+  box-shadow: 0 8px 0 #0e2a24;
+}
+.btn.blocky:hover { transform: translateY(-2px); }
+.btn.blocky:active { transform: translateY(2px); box-shadow: 0 4px 0 #0e2a24; }
 
 .error-msg {
   color: red;
@@ -464,13 +433,6 @@ body {
   max-width: calc(100% - 2rem);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
   animation: fadeIn 0.2s ease;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-/* Panic modal tweaks */
-#panicAlertOverlay .modal-header h3 {
-  color: #e74c3c;
 }
 
 .modal-header {
@@ -479,13 +441,10 @@ body {
   justify-content: space-between;
   padding: 0.9rem 1rem;
   border-bottom: 1px solid #eee;
-  flex-shrink: 0;
 }
 
 .modal-body {
   padding: 1rem;
-  flex: 1;
-  overflow-y: auto;
 }
 
 .modal-row {
@@ -517,7 +476,6 @@ body {
   justify-content: flex-end;
   gap: 0.6rem;
   margin-top: 0.8rem;
-  flex-shrink: 0;
 }
 
 /* Add New Tourist Modal */
@@ -534,331 +492,64 @@ body {
   color: #333;
 }
 
-/* Safe Zones Modal - FIXED LAYOUT */
-.safe-zones-modal {
-  width: 95vw;
-  max-width: 1400px;
-  height: 90vh;
-  max-height: 95vh;
-  display: flex;
-  flex-direction: column;
-  margin: 0 auto;
-}
-
-.safe-zones-modal .modal-header {
-  padding: 1rem 1.5rem;
-}
-
-.safe-zones-content {
-  display: flex;
-  flex: 1;
+/* TerraSafe hero */
+.ts-hero {
+  position: relative;
+  min-height: clamp(280px, 48vh, 600px);
+  display: grid;
+  place-items: center;
+  background: #f2f6f2;
   overflow: hidden;
-  height: calc(100% - 60px);
-  /* Account for header */
 }
 
-.zones-lists-panel {
-  flex: 1;
-  min-width: 300px;
-  max-width: 350px;
-  padding: 1.5rem;
-  border-right: 1px solid #e0e0e0;
-  overflow-y: auto;
-  background: #fafafa;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.ts-brand {
+  font-weight: 800;
+  font-size: clamp(28px, 6vw, 56px);
+  color: #163b35;
+  line-height: 1.1;
+  z-index: 1;
+  margin: 0;
+  margin-top: 3.5rem;
+  margin-bottom: 0.5rem;
 }
 
-.zones-section {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+/* Tagline for hero (blocky ribbon) */
+.ts-tagline {
+  margin-top: -0.6rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: #163b35;
+  background: #dfeeea;
+  padding: 6px 10px;
+  border-radius: 6px;
+  z-index: 1;
 }
 
-.section-title {
-  margin: 0 0 1rem 0;
-  color: #2c3e50;
-  font-size: 1.1rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.section-title.safe-title {
-  color: #27ae60;
-}
-
-.section-title.unsafe-title {
-  color: #c0392b;
-}
-
-#safeZonesList,
-#unsafeZonesList {
-  flex: 1;
-  max-height: none;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-}
-
-#safeZonesList::-webkit-scrollbar,
-#unsafeZonesList::-webkit-scrollbar {
-  width: 4px;
-}
-
-#safeZonesList::-webkit-scrollbar-track,
-#unsafeZonesList::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 2px;
-}
-
-#safeZonesList::-webkit-scrollbar-thumb,
-#unsafeZonesList::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 2px;
-}
-
-.safe-zones-map-panel {
-  flex: 2;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  position: relative;
-}
-
-.search-section {
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 1rem;
-}
-
-.search-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 2px solid #e0e0e0;
-  border-radius: 25px;
-  padding: 0 15px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.search-container:focus-within {
-  border-color: #3498db;
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
-}
-
-.search-icon {
-  color: #7f8c8d;
-  font-size: 1rem;
-  margin-right: 10px;
-}
-
-.search-input {
-  border: none;
-  outline: none;
-  flex: 1;
-  padding: 12px 5px;
-  font-size: 1rem;
-  background: transparent;
-  color: #2c3e50;
-}
-
-.search-input::placeholder {
-  color: #bdc3c7;
-}
-
-.search-btn {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background 0.3s ease;
-}
-
-.search-btn:hover {
-  background: #2980b9;
-}
-
-.search-results {
+.ts-cloud {
   position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  margin-top: 5px;
+  top: clamp(12px, 6vh, 48px);
+  width: clamp(140px, 22vw, 280px);
+  opacity: .7;
 }
 
-.search-result-item {
-  padding: 12px 16px;
-  cursor: pointer;
-  border-bottom: 1px solid #f0f0f0;
-  transition: background 0.2s ease;
-  font-size: 0.9rem;
+.ts-cloud--left { left: clamp(8px, 6vw, 80px); }
+.ts-cloud--right { right: clamp(8px, 8vw, 100px); }
+
+.ts-shrub {
+  position: absolute;
+  bottom: 0;
+  width: clamp(240px, 36vw, 520px);
 }
 
-.search-result-item:hover {
-  background: #f8f9fa;
+.ts-shrub--left { left: -2vw; }
+.ts-shrub--right { right: -2vw; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ts-cloud--left { animation: ts-float 14s ease-in-out infinite; }
+  .ts-cloud--right { animation: ts-float 18s ease-in-out infinite reverse; }
 }
 
-.search-result-item:last-child {
-  border-bottom: none;
-}
-
-.search-result-name {
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 2px;
-}
-
-.search-result-address {
-  color: #7f8c8d;
-  font-size: 0.85rem;
-}
-
-.zone-type-toggle {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-#safeZonesMap {
-  height: 550px;
-  /* Much bigger map */
-  width: 100%;
-  max-width: 800px;
-  /* Limit width for better proportions */
-  border-radius: 12px;
-  margin-bottom: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  display: block;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.modal-row {
-  width: 100%;
-  max-width: 300px;
-  margin-bottom: 1rem;
-}
-
-.modal-row input {
-  width: 100%;
-  max-width: 300px;
-}
-
-.modal-actions {
-  width: 100%;
-  max-width: 300px;
-  justify-content: center;
-}
-
-.zone-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.9rem;
-}
-
-.zone-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.zone-card.safe {
-  background: #f0f9f0;
-  border-color: #2ecc71;
-  color: #27ae60;
-}
-
-.zone-card.unsafe {
-  background: #fef2f2;
-  border-color: #e74c3c;
-  color: #c0392b;
-}
-
-.zone-card button {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-
-#saveSafeZoneBtn {
-  min-width: 120px;
-  padding: 10px 20px;
-  font-size: 1rem;
-}
-
-#saveSafeZoneBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Safe zone circles on map */
-.safe-zone-circle {
-  fill-opacity: 0.3;
-  stroke: #2ecc71;
-  color: #2ecc71;
-  weight: 2;
-  animation: pulseGreen 3s ease-in-out infinite;
-}
-
-.unsafe-zone-circle {
-  fill-opacity: 0.2;
-  stroke: #e74c3c;
-  color: #e74c3c;
-  weight: 2;
-  animation: pulseRed 2s ease-in-out infinite;
-}
-
-/* Custom marker for zone creation */
-.custom-marker {
-  background: transparent;
-  border: none;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .safe-zones-modal {
-    width: 98vw;
-    height: 95vh;
-  }
-
-  .safe-zones-content {
-    flex-direction: column;
-  }
-
-  .zones-lists-panel {
-    min-width: auto;
-    max-width: none;
-    border-right: none;
-    border-bottom: 1px solid #e0e0e0;
-    padding: 1rem;
-  }
-
-  #safeZonesMap {
-    height: 400px;
-    max-width: none;
-  }
+@keyframes ts-float {
+  50% { transform: translateY(6px); }
 }
