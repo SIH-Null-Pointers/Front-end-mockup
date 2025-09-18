@@ -327,6 +327,11 @@ body {
   animation: fadeIn 0.2s ease;
 }
 
+/* Panic modal tweaks */
+#panicAlertOverlay .modal-header h3 {
+  color: #e74c3c;
+}
+
 .modal-header {
   display: flex;
   align-items: center;

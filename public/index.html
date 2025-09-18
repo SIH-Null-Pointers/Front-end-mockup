@@ -132,8 +132,37 @@
     </div>
   </div>
 
+  <!-- Panic Alert Modal -->
+  <div id="panicAlertOverlay" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>🚨 Active Panic Alert</h3>
+        <button id="panicCloseBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-row">
+          <label>Alert ID</label>
+          <input type="text" id="panicAlertId" readonly>
+        </div>
+        <div class="modal-row">
+          <label>Coordinates (lat, lng)</label>
+          <div class="split">
+            <input type="number" id="panicLat" step="any" readonly>
+            <input type="number" id="panicLng" step="any" readonly>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn" id="centerMapBtn">Center on Map</button>
+          <button class="btn delete" id="cancelAlertBtn">Cancel Alert</button>
+        </div>
+        <p id="panicError" style="color: red; font-size: 0.9rem;"></p>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
+  <script type="module" src="realtime.js"></script>
 </body>
 
 </html>

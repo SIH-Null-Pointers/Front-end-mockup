@@ -111,6 +111,8 @@ function renderMap() {
 
   if (mapInstance) mapInstance.remove();
   mapInstance = L.map('map').setView([20, 0], 2);
+  // Expose globally for other modules (e.g., realtime.js)
+  try { window.mapInstance = mapInstance; } catch (_) {}
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap contributors',
