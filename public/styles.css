@@ -233,3 +233,58 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  width: 520px;
+  max-width: calc(100% - 2rem);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  animation: fadeIn 0.2s ease;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #eee;
+}
+.modal-body {
+  padding: 1rem;
+}
+.modal-row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.8rem;
+}
+.modal-row label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+.modal-row input {
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+.modal-row .split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
+}
+
