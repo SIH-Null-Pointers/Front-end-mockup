@@ -2,12 +2,27 @@
 const express = require('express');
 const admin = require('firebase-admin');
 const path = require('path');
-const serviceAccount = require('./serviceAccountKey.json');
+const fs = require('fs');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://tourist-safety-4761a-default-rtdb.firebaseio.com'
-});
+// Check if serviceAccountKey.json exists
+let serviceAccount;
+let firebaseInitialized = false;
+
+try {
+  if (fs.existsSync('./serviceAccountKey.json')) {
+    serviceAccount = require('./serviceAccountKey.json');
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: 'https://tourist-safety-4761a-default-rtdb.firebaseio.com'
+    });
+    firebaseInitialized = true;
+    console.log('Firebase initialized successfully');
+  } else {
+    console.error('serviceAccountKey.json not found. Firebase functionality will be limited.');
+  }
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+}
 
 const app = express();
 app.use(express.json());
@@ -37,6 +52,29 @@ app.get('/login', (req, res) => {
 
 // Get active tourists (profiles from Firestore + live coords from RTDB)
 app.get('/tourists', async (req, res) => {
+  // Return mock data if Firebase is not initialized
+  if (!firebaseInitialized) {
+    const mockTourists = [
+      {
+        docId: 'mock1',
+        name: 'Mock Tourist 1',
+        nationality: 'USA',
+        status: 'normal',
+        location: { latitude: 28.6139, longitude: 77.2090 }, // Delhi
+        safetyScore: 90
+      },
+      {
+        docId: 'mock2',
+        name: 'Mock Tourist 2',
+        nationality: 'UK',
+        status: 'abnormal',
+        location: { latitude: 19.0760, longitude: 72.8777 }, // Mumbai
+        safetyScore: 70
+      }
+    ];
+    return res.json(mockTourists);
+  }
+  
   try {
     const [fsSnap, rtdbSnap] = await Promise.all([
       admin.firestore().collection('users').get(),
@@ -52,6 +90,21 @@ app.get('/tourists', async (req, res) => {
 
 // Get safe zones
 app.get('/safe-zones', async (req, res) => {
+  // Return mock data if Firebase is not initialized
+  if (!firebaseInitialized) {
+    const mockSafeZones = [
+      {
+        id: 'safe1',
+        lat: 28.6139,
+        lng: 77.2090,
+        radius: 5000,
+        type: 'safe',
+        timestamp: new Date().toISOString()
+      }
+    ];
+    return res.json(mockSafeZones);
+  }
+  
   try {
     const snapshot = await admin.firestore().collection('safe_zones').get();
     const zones = snapshot.docs.map(doc => ({
@@ -70,6 +123,21 @@ app.post('/safe-zones', async (req, res) => {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(radius)) {
     return res.status(400).json({ error: 'Invalid lat, lng, or radius' });
   }
+  
+  // Return mock response if Firebase is not initialized
+  if (!firebaseInitialized) {
+    const mockId = 'mock-safe-' + Date.now();
+    return res.json({ 
+      ok: true, 
+      id: mockId, 
+      lat, 
+      lng, 
+      radius, 
+      type: 'safe',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   try {
     const docRef = await admin.firestore().collection('safe_zones').add({
       lat,
@@ -88,6 +156,12 @@ app.post('/safe-zones', async (req, res) => {
 // Delete safe zone
 app.delete('/safe-zones/:id', async (req, res) => {
   const { id } = req.params;
+  
+  // Return mock response if Firebase is not initialized
+  if (!firebaseInitialized) {
+    return res.json({ ok: true });
+  }
+  
   try {
     await admin.firestore().collection('safe_zones').doc(id).delete();
     res.json({ ok: true });
@@ -98,6 +172,21 @@ app.delete('/safe-zones/:id', async (req, res) => {
 
 // Get unsafe zones
 app.get('/unsafe-zones', async (req, res) => {
+  // Return mock data if Firebase is not initialized
+  if (!firebaseInitialized) {
+    const mockUnsafeZones = [
+      {
+        id: 'unsafe1',
+        lat: 19.0760,
+        lng: 72.8777,
+        radius: 3000,
+        type: 'unsafe',
+        timestamp: new Date().toISOString()
+      }
+    ];
+    return res.json(mockUnsafeZones);
+  }
+  
   try {
     const snapshot = await admin.firestore().collection('unsafe_zones').get();
     const zones = snapshot.docs.map(doc => ({
@@ -116,6 +205,21 @@ app.post('/unsafe-zones', async (req, res) => {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(radius)) {
     return res.status(400).json({ error: 'Invalid lat, lng, or radius' });
   }
+  
+  // Return mock response if Firebase is not initialized
+  if (!firebaseInitialized) {
+    const mockId = 'mock-unsafe-' + Date.now();
+    return res.json({ 
+      ok: true, 
+      id: mockId, 
+      lat, 
+      lng, 
+      radius, 
+      type: 'unsafe',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
   try {
     const docRef = await admin.firestore().collection('unsafe_zones').add({
       lat,
@@ -134,6 +238,12 @@ app.post('/unsafe-zones', async (req, res) => {
 // Delete unsafe zone
 app.delete('/unsafe-zones/:id', async (req, res) => {
   const { id } = req.params;
+  
+  // Return mock response if Firebase is not initialized
+  if (!firebaseInitialized) {
+    return res.json({ ok: true });
+  }
+  
   try {
     await admin.firestore().collection('unsafe_zones').doc(id).delete();
     res.json({ ok: true });
@@ -312,64 +422,201 @@ function SafetyScoreIsValid(v) {
 
 // SSE for real-time updates (pushes merged Firestore + RTDB users)
 app.get('/stream', (req, res) => {
+  // Check if Firebase is initialized
+  if (!firebaseInitialized) {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Send mock data for testing
+    const mockData = {
+      users: [
+        {
+          docId: 'mock1',
+          name: 'Mock Tourist 1',
+          nationality: 'USA',
+          status: 'normal',
+          location: { latitude: 28.6139, longitude: 77.2090 }, // Delhi
+          safetyScore: 90
+        },
+        {
+          docId: 'mock2',
+          name: 'Mock Tourist 2',
+          nationality: 'UK',
+          status: 'abnormal',
+          location: { latitude: 19.0760, longitude: 72.8777 }, // Mumbai
+          safetyScore: 70
+        }
+      ],
+      safeZones: [
+        {
+          id: 'safe1',
+          lat: 28.6139,
+          lng: 77.2090,
+          radius: 5000,
+          type: 'safe',
+          timestamp: new Date().toISOString()
+        }
+      ],
+      unsafeZones: [
+        {
+          id: 'unsafe1',
+          lat: 19.0760,
+          lng: 72.8777,
+          radius: 3000,
+          type: 'unsafe',
+          timestamp: new Date().toISOString()
+        }
+      ],
+      panics: []
+    };
+    
+    // Send initial connection message
+    res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Mock SSE connection established' })}
+
+`);
+    
+    // Send mock data
+    res.write(`data: ${JSON.stringify({ type: 'users', data: mockData.users })}
+
+`);
+    res.write(`data: ${JSON.stringify({ type: 'safeZones', data: mockData.safeZones })}
+
+`);
+    res.write(`data: ${JSON.stringify({ type: 'unsafeZones', data: mockData.unsafeZones })}
+
+`);
+    res.write(`data: ${JSON.stringify({ type: 'panics', data: mockData.panics })}
+
+`);
+    
+    // Keep connection alive with periodic updates
+    const interval = setInterval(() => {
+      res.write(`data: ${JSON.stringify({ type: 'heartbeat', timestamp: new Date().toISOString() })}
+
+`);
+    }, 10000);
+    
+    req.on('close', () => {
+      clearInterval(interval);
+      console.log('Mock SSE client disconnected');
+    });
+    
+    return;
+  }
+  
+  // Set CORS headers to allow connections from any origin
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+
+  // Send an initial connection confirmation
+  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'SSE connection established' })}\n\n`);
 
   let latestFsDocs = [];
   let latestRtdbUsers = {};
 
   const sendUsers = () => {
-    if (!latestFsDocs.length) return;
-    const users = latestFsDocs.map(doc => mergeUserWithRTDB(doc, latestRtdbUsers));
-    res.write(`data: ${JSON.stringify({ type: 'users', data: users })}\n\n`);
+    try {
+      if (!latestFsDocs.length) return;
+      const users = latestFsDocs.map(doc => mergeUserWithRTDB(doc, latestRtdbUsers));
+      res.write(`data: ${JSON.stringify({ type: 'users', data: users })}\n\n`);
+    } catch (error) {
+      console.error('Error sending users data:', error);
+    }
   };
 
   const fsUnsub = admin.firestore().collection('users').onSnapshot(snapshot => {
-    latestFsDocs = snapshot.docs;
-    sendUsers();
-  }, () => {});
+    try {
+      latestFsDocs = snapshot.docs;
+      sendUsers();
+    } catch (error) {
+      console.error('Error processing Firestore users data:', error);
+    }
+  }, (error) => {
+    console.error('Error in users snapshot:', error);
+  });
 
   const rtdbRef = admin.database().ref('users');
   const rtdbListener = rtdbRef.on('value', snap => {
-    latestRtdbUsers = snap.val() || {};
-    sendUsers();
+    try {
+      latestRtdbUsers = snap.val() || {};
+      sendUsers();
+    } catch (error) {
+      console.error('Error processing RTDB users data:', error);
+    }
+  }, (error) => {
+    console.error('Error in RTDB users listener:', error);
   });
 
   const panicUnsub = admin.firestore().collection('panic_logs').onSnapshot(snapshot => {
-    const panics = snapshot.docs.map(doc => ({
-      userId: doc.id,
-      type: 'critical',
-      text: `Panic alert from ${doc.data().userId}`,
-      time: doc.data().timestamp?.toDate().toLocaleTimeString() || 'N/A',
-    }));
-    res.write(`data: ${JSON.stringify({ type: 'panics', data: panics })}\n\n`);
-  }, () => {});
+    try {
+      const panics = snapshot.docs.map(doc => ({
+        userId: doc.id,
+        type: 'critical',
+        text: `Panic alert from ${doc.data().userId}`,
+        time: doc.data().timestamp?.toDate().toLocaleTimeString() || 'N/A',
+      }));
+      res.write(`data: ${JSON.stringify({ type: 'panics', data: panics })}\n\n`);
+    } catch (error) {
+      console.error('Error processing panic logs data:', error);
+    }
+  }, (error) => {
+    console.error('Error in panic logs snapshot:', error);
+  });
 
-  // Safe zones listener
+  // Safe zones listener with improved error handling
   const safeZonesUnsub = admin.firestore().collection('safe_zones').onSnapshot(snapshot => {
-    const zones = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    res.write(`data: ${JSON.stringify({ type: 'safeZones', data: zones })}\n\n`);
-  }, () => {});
+    try {
+      const zones = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'safe' // Ensure type is always set
+      }));
+      res.write(`data: ${JSON.stringify({ type: 'safeZones', data: zones })}\n\n`);
+    } catch (error) {
+      console.error('Error processing safe zones data:', error);
+    }
+  }, (error) => {
+    console.error('Error in safe zones snapshot:', error);
+  });
 
-  // Unsafe zones listener
+  // Unsafe zones listener with improved error handling
   const unsafeZonesUnsub = admin.firestore().collection('unsafe_zones').onSnapshot(snapshot => {
-    const zones = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    res.write(`data: ${JSON.stringify({ type: 'unsafeZones', data: zones })}\n\n`);
-  }, () => {});
+    try {
+      const zones = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'unsafe' // Ensure type is always set
+      }));
+      res.write(`data: ${JSON.stringify({ type: 'unsafeZones', data: zones })}\n\n`);
+    } catch (error) {
+      console.error('Error processing unsafe zones data:', error);
+    }
+  }, (error) => {
+    console.error('Error in unsafe zones snapshot:', error);
+  });
 
+  // Handle client disconnection
   req.on('close', () => {
-    fsUnsub();
-    panicUnsub();
-    safeZonesUnsub();
-    unsafeZonesUnsub();
-    rtdbRef.off('value', rtdbListener);
+    try {
+      console.log('Client disconnected, cleaning up listeners');
+      fsUnsub();
+      panicUnsub();
+      safeZonesUnsub();
+      unsafeZonesUnsub();
+      rtdbRef.off('value', rtdbListener);
+    } catch (error) {
+      console.error('Error cleaning up listeners:', error);
+    }
+  });
+  
+  // Handle errors on the response object
+  res.on('error', (error) => {
+    console.error('Error in SSE response stream:', error);
   });
 });
 

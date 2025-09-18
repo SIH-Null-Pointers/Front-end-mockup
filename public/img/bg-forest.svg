@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+  <rect width="1440" height="900" fill="#eaf4ef"/>
+  <!-- distant hills -->
+  <path d="M0 640h1440v260H0z" fill="#2c6e63"/>
+  <path d="M0 640c120-80 280-120 440-120 184 0 332 80 420 160 128-120 280-160 580-160v420H0V640z" fill="#3d8b79"/>
+  <!-- line art to echo shrub style -->
+  <g fill="none" stroke="#163b35" stroke-width="6" opacity=".35">
+    <path d="M120 900c0-140 96-260 240-260"/>
+    <path d="M420 900c0-180 140-320 340-320"/>
+    <path d="M980 900c0-160 120-280 280-280"/>
+  </g>
+</svg>
+

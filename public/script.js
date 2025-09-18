@@ -29,68 +29,112 @@ const INDIA_BOUNDS = [
   [37.0927, 97.3953]   // Northeast
 ];
 
-// Initialize EventSource for real-time updates
-const eventSource = new EventSource('http://localhost:3000/stream');
+// Initialize EventSource for real-time updates with error handling
+let eventSource;
+let reconnectTimeout;
 
-eventSource.onmessage = (event) => {
-  const update = JSON.parse(event.data);
-  if (update.type === 'users') {
-    const prevOpen = currentTouristDocId;
-    tourists = update.data.map(u => {
-      const docId = u.docId || u.id;
-      const displayId = u.userId || u.id || docId;
-      const latitude = u.location?.latitude ?? 0;
-      const longitude = u.location?.longitude ?? 0;
-      const safetyScore = u.safetyScore ?? 85;
-      const status = safetyScore > 80 ? 'normal' : safetyScore > 60 ? 'abnormal' : 'critical';
-      return {
-        docId,
-        displayId,
-        name: u.name || 'Unknown',
-        country: u.nationality || 'N/A',
-        status,
-        location: [latitude, longitude],
-        complaint: u.complaints || 0,
-        safetyScore,
-        phone: u.phone || 'N/A',
-      };
-    }).filter(t => !!t.docId);
+// Define the message handler first
+let eventSourceMessageHandler = (event) => {
+  try {
+    const update = JSON.parse(event.data);
+    if (update.type === 'users') {
+      const prevOpen = currentTouristDocId;
+      tourists = update.data.map(u => {
+        const docId = u.docId || u.id;
+        const displayId = u.userId || u.id || docId;
+        const latitude = u.location?.latitude ?? 0;
+        const longitude = u.location?.longitude ?? 0;
+        const safetyScore = u.safetyScore ?? 85;
+        const status = safetyScore > 80 ? 'normal' : safetyScore > 60 ? 'abnormal' : 'critical';
+        return {
+          docId,
+          displayId,
+          name: u.name || 'Unknown',
+          country: u.nationality || 'N/A',
+          status,
+          location: [latitude, longitude],
+          complaint: u.complaints || 0,
+          safetyScore,
+          phone: u.phone || 'N/A',
+        };
+      }).filter(t => !!t.docId);
 
-    renderTourists();
-    renderMap();
-    updateHeaderStats();
+      renderTourists();
+      renderMap();
+      updateHeaderStats();
 
-    // If the modal is open, refresh the live lat/lng fields without allowing edits
-    if (prevOpen) {
-      const t = tourists.find(x => x.docId === prevOpen);
-      if (t) {
-        document.getElementById('modalLat')?.setAttribute('disabled', 'true');
-        document.getElementById('modalLng')?.setAttribute('disabled', 'true');
-        document.getElementById('modalLat').value = t.location?.[0] ?? 0;
-        document.getElementById('modalLng').value = t.location?.[1] ?? 0;
+      // If the modal is open, refresh the live lat/lng fields without allowing edits
+      if (prevOpen) {
+        const t = tourists.find(x => x.docId === prevOpen);
+        if (t) {
+          document.getElementById('modalLat')?.setAttribute('disabled', 'true');
+          document.getElementById('modalLng')?.setAttribute('disabled', 'true');
+          document.getElementById('modalLat').value = t.location?.[0] ?? 0;
+          document.getElementById('modalLng').value = t.location?.[1] ?? 0;
+        }
+      }
+    } else if (update.type === 'panics') {
+      activities = update.data.map(p => ({
+        type: p.type,
+        text: p.text,
+        time: p.time,
+      }));
+      renderActivities();
+      updateHeaderStats();
+    } else if (update.type === 'safeZones') {
+      safeZones = update.data;
+      renderSafeZonesOnMap();
+      if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
+        renderSafeZonesList();
+      }
+    } else if (update.type === 'unsafeZones') {
+      unsafeZones = update.data;
+      renderUnsafeZonesOnMap();
+      if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
+        renderUnsafeZonesList();
       }
     }
-  } else if (update.type === 'panics') {
-    activities = update.data.map(p => ({
-      type: p.type,
-      text: p.text,
-      time: p.time,
-    }));
-    renderActivities();
-    updateHeaderStats();
-  } else if (update.type === 'safeZones') {
-    safeZones = update.data;
-    renderSafeZonesOnMap();
-    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
-      renderSafeZonesList();
-    }
-  } else if (update.type === 'unsafeZones') {
-    unsafeZones = update.data;
-    renderUnsafeZonesOnMap();
-    if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
-      renderUnsafeZonesList();
-    }
+  } catch (error) {
+    console.error('Error processing SSE message:', error);
   }
+};
+
+function connectEventSource() {
+  if (eventSource) {
+    eventSource.close();
+  }
+  
+  eventSource = new EventSource('http://localhost:3000/stream');
+  
+  eventSource.onopen = () => {
+    console.log('SSE connection established');
+    // Clear any reconnect timeout if connection is successful
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      reconnectTimeout = null;
+    }
+  };
+  
+  eventSource.onerror = (error) => {
+    console.error('SSE connection error:', error);
+    eventSource.close();
+    
+    // Attempt to reconnect after 5 seconds
+    if (!reconnectTimeout) {
+      reconnectTimeout = setTimeout(() => {
+        console.log('Attempting to reconnect to SSE...');
+        connectEventSource();
+      }, 5000);
+    }
+  };
+  
+  // Set the message handler
+  eventSource.onmessage = eventSourceMessageHandler;
+}
+
+// Call the function to establish connection
+connectEventSource();
+// This code is now handled by the eventSourceMessageHandler function defined above
 };
 
 // Update header stats
@@ -172,6 +216,27 @@ function renderMap() {
       maxZoom: 18,
       minZoom: 5
     }).addTo(mapInstance);
+    
+    // Add legend for zones
+    const legend = L.control({position: 'bottomright'});
+    legend.onAdd = function() {
+      const div = L.DomUtil.create('div', 'info legend');
+      div.innerHTML = `
+        <div style="background-color: rgba(255,255,255,0.8); padding: 10px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+          <h4 style="margin: 0 0 5px 0;">Zone Legend</h4>
+          <div style="display: flex; align-items: center; margin-bottom: 5px;">
+            <span style="display: inline-block; width: 15px; height: 15px; border-radius: 50%; background-color: #2ecc71; margin-right: 5px;"></span>
+            <span>Safe Zone</span>
+          </div>
+          <div style="display: flex; align-items: center;">
+            <span style="display: inline-block; width: 15px; height: 15px; border-radius: 50%; background-color: #e74c3c; margin-right: 5px;"></span>
+            <span>Unsafe Zone</span>
+          </div>
+        </div>
+      `;
+      return div;
+    };
+    legend.addTo(mapInstance);
 
     // Track user interaction to avoid fighting with auto-fit
     mapInstance.on('movestart', () => {
@@ -207,26 +272,65 @@ function renderMap() {
       return;
     }
     
+    // Check if tourist is in any safe or unsafe zone and update status
+    const touristLatLng = L.latLng(t.location[0], t.location[1]);
+    let inSafeZone = false;
+    let inUnsafeZone = false;
+    
+    // Check safe zones
+    safeZones.forEach(zone => {
+      const zoneLatLng = L.latLng(zone.lat, zone.lng);
+      const distance = touristLatLng.distanceTo(zoneLatLng);
+      if (distance <= zone.radius) {
+        inSafeZone = true;
+      }
+    });
+    
+    // Check unsafe zones
+    unsafeZones.forEach(zone => {
+      const zoneLatLng = L.latLng(zone.lat, zone.lng);
+      const distance = touristLatLng.distanceTo(zoneLatLng);
+      if (distance <= zone.radius) {
+        inUnsafeZone = true;
+      }
+    });
+    
+    // Update tourist status based on zones
+    let zoneStatus = t.status;
+    let zoneInfo = '';
+    if (inUnsafeZone) {
+      zoneStatus = 'critical';
+      zoneInfo = '<span style="color: #e74c3c;">⚠️ In Unsafe Zone</span>';
+    } else if (inSafeZone) {
+      zoneStatus = 'normal';
+      zoneInfo = '<span style="color: #2ecc71;">✓ In Safe Zone</span>';
+    }
+    
     nextIds.add(t.docId);
     const existing = touristMarkers[t.docId];
     if (existing) {
       // Smoothly move marker to new position
       existing.setStyle({
-        fillColor: statusColors[t.status],
-        color: statusColors[t.status]
+        fillColor: statusColors[zoneStatus],
+        color: statusColors[zoneStatus],
+        radius: inUnsafeZone ? 10 : 8, // Make markers in unsafe zones larger
+        weight: inUnsafeZone ? 3 : 2
       });
       existing.setLatLng(t.location);
+      
+      // Update popup content with zone information
+      existing.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%<br>${zoneInfo}`);
     } else {
       const marker = L.circleMarker(t.location, {
-        radius: 8,
-        fillColor: statusColors[t.status],
-        color: statusColors[t.status],
-        weight: 2,
+        radius: inUnsafeZone ? 10 : 8,
+        fillColor: statusColors[zoneStatus],
+        color: statusColors[zoneStatus],
+        weight: inUnsafeZone ? 3 : 2,
         opacity: 1,
         fillOpacity: 0.95,
-        className: `tourist-marker status-${t.status}`
+        className: `tourist-marker status-${zoneStatus}`
       }).addTo(mapInstance);
-      marker.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%`);
+      marker.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%<br>${zoneInfo}`);
       touristMarkers[t.docId] = marker;
     }
   });
@@ -302,7 +406,8 @@ function renderMap() {
       const bounds = L.latLngBounds(ids.map(id => touristMarkers[id].getLatLng()));
       // Ensure bounds fit within India
       const indiaBounds = L.latLngBounds(INDIA_BOUNDS);
-      const fitBounds = bounds.intersect(indiaBounds);
+      // Use contains instead of intersect to check if bounds are within India
+      const fitBounds = indiaBounds.contains(bounds) ? bounds : indiaBounds;
       try {
         mapInstance.flyToBounds(fitBounds.pad(0.2), { 
           animate: true, 
@@ -344,8 +449,34 @@ function renderSafeZonesOnMap() {
       fillOpacity: 0.3,
       className: 'safe-zone-circle'
     }).addTo(mapInstance);
-    circle.bindPopup(`Safe Zone<br>Radius: ${zone.radius}m`);
+    
+    // Enhanced popup with more information
+    const popupContent = `
+      <div class="zone-popup">
+        <h4>Safe Zone</h4>
+        <p>Radius: ${zone.radius}m</p>
+        <p>Created: ${zone.timestamp ? new Date(zone.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</p>
+      </div>
+    `;
+    circle.bindPopup(popupContent);
+    
+    // Store circle reference for later use
     safeZoneCircles[zone.id] = circle;
+    
+    // Add click event to show zone details
+    circle.on('click', function() {
+      // Highlight the selected zone in the list if modal is open
+      if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
+        const zoneItems = document.querySelectorAll('.zone-list-item');
+        zoneItems.forEach(item => {
+          item.classList.remove('selected');
+          if (item.dataset.id === zone.id) {
+            item.classList.add('selected');
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+      }
+    });
   });
 }
 
@@ -374,8 +505,50 @@ function renderUnsafeZonesOnMap() {
       fillOpacity: 0.2,
       className: 'unsafe-zone-circle'
     }).addTo(mapInstance);
-    circle.bindPopup(`Unsafe Zone<br>Radius: ${zone.radius}m`);
+    
+    // Enhanced popup with more information
+    const popupContent = `
+      <div class="zone-popup">
+        <h4>Unsafe Zone</h4>
+        <p>Radius: ${zone.radius}m</p>
+        <p>Created: ${zone.timestamp ? new Date(zone.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</p>
+      </div>
+    `;
+    circle.bindPopup(popupContent);
+    
+    // Store circle reference for later use
     unsafeZoneCircles[zone.id] = circle;
+    
+    // Add click event to show zone details
+    circle.on('click', function() {
+      // Highlight the selected zone in the list if modal is open
+      if (document.getElementById('safeZonesModal')?.style.display === 'flex') {
+        const zoneItems = document.querySelectorAll('.zone-list-item');
+        zoneItems.forEach(item => {
+          item.classList.remove('selected');
+          if (item.dataset.id === zone.id) {
+            item.classList.add('selected');
+            item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        });
+      }
+    });
+    
+    // Check for tourists in unsafe zones and update their safety score
+    Object.values(touristMarkers).forEach(marker => {
+      const touristLatLng = marker.getLatLng();
+      const zoneLatLng = L.latLng(zone.lat, zone.lng);
+      const distance = touristLatLng.distanceTo(zoneLatLng);
+      
+      if (distance <= zone.radius) {
+        // Tourist is in an unsafe zone, highlight the marker
+        marker.setStyle({
+          fillOpacity: 0.9,
+          radius: 10,
+          weight: 3
+        });
+      }
+    });
   });
 }
 
@@ -448,6 +621,60 @@ async function fetchUnsafeZones() {
   }
 }
 
+// Delete safe zone
+async function deleteSafeZone(id) {
+  try {
+    const response = await fetch(`http://localhost:3000/safe-zones/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (response.ok) {
+      // Remove from local array
+      safeZones = safeZones.filter(zone => zone.id !== id);
+      
+      // Update UI
+      renderSafeZonesOnMap();
+      renderSafeZonesList();
+      
+      // Show success message
+      alert('Safe zone deleted successfully');
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete safe zone');
+    }
+  } catch (error) {
+    console.error('Error deleting safe zone:', error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
+// Delete unsafe zone
+async function deleteUnsafeZone(id) {
+  try {
+    const response = await fetch(`http://localhost:3000/unsafe-zones/${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (response.ok) {
+      // Remove from local array
+      unsafeZones = unsafeZones.filter(zone => zone.id !== id);
+      
+      // Update UI
+      renderUnsafeZonesOnMap();
+      renderUnsafeZonesList();
+      
+      // Show success message
+      alert('Unsafe zone deleted successfully');
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete unsafe zone');
+    }
+  } catch (error) {
+    console.error('Error deleting unsafe zone:', error);
+    alert(`Error: ${error.message}`);
+  }
+}
+
 // Safe Zones Modal
 function openSafeZonesModal() {
   document.getElementById('safeZonesModal').style.display = 'flex';
@@ -469,6 +696,124 @@ function openSafeZonesModal() {
   clearBtn.style.display = 'none';
   selectedZoneLatLng = null;
   document.getElementById('saveSafeZoneBtn').disabled = true;
+}
+
+// Render safe zones list
+function renderSafeZonesList() {
+  const list = document.getElementById('safeZonesList');
+  if (!list) return;
+  
+  list.innerHTML = '';
+  if (safeZones.length === 0) {
+    list.innerHTML = '<div class="empty-list">No safe zones defined</div>';
+    return;
+  }
+  
+  safeZones.forEach(zone => {
+    const item = document.createElement('div');
+    item.className = 'zone-list-item';
+    item.dataset.id = zone.id;
+    item.dataset.type = 'safe';
+    
+    // Get location name using reverse geocoding if available
+    const locationName = zone.locationName || 'Safe Zone';
+    
+    item.innerHTML = `
+      <div class="zone-info">
+        <div class="zone-name">${locationName}</div>
+        <div class="zone-details">
+          <span>Radius: ${zone.radius}m</span>
+          <span>Lat: ${zone.lat.toFixed(4)}</span>
+          <span>Lng: ${zone.lng.toFixed(4)}</span>
+        </div>
+      </div>
+      <div class="zone-actions">
+        <button class="view-zone-btn" data-id="${zone.id}" data-type="safe">View</button>
+        <button class="delete-zone-btn" data-id="${zone.id}" data-type="safe">Delete</button>
+      </div>
+    `;
+    
+    // Add click event to view zone on map
+    item.querySelector('.view-zone-btn').addEventListener('click', () => {
+      if (safeZonesMapInstance) {
+        safeZonesMapInstance.setView([zone.lat, zone.lng], 14);
+        // Highlight the zone on the map
+        safeZonesMapInstance.eachLayer(layer => {
+          if (layer instanceof L.Circle && layer.getLatLng().lat === zone.lat && layer.getLatLng().lng === zone.lng) {
+            layer.openPopup();
+          }
+        });
+      }
+    });
+    
+    // Add click event to delete zone
+    item.querySelector('.delete-zone-btn').addEventListener('click', () => {
+      if (confirm(`Are you sure you want to delete this safe zone?`)) {
+        deleteSafeZone(zone.id);
+      }
+    });
+    
+    list.appendChild(item);
+  });
+}
+
+// Render unsafe zones list
+function renderUnsafeZonesList() {
+  const list = document.getElementById('unsafeZonesList');
+  if (!list) return;
+  
+  list.innerHTML = '';
+  if (unsafeZones.length === 0) {
+    list.innerHTML = '<div class="empty-list">No unsafe zones defined</div>';
+    return;
+  }
+  
+  unsafeZones.forEach(zone => {
+    const item = document.createElement('div');
+    item.className = 'zone-list-item';
+    item.dataset.id = zone.id;
+    item.dataset.type = 'unsafe';
+    
+    // Get location name using reverse geocoding if available
+    const locationName = zone.locationName || 'Unsafe Zone';
+    
+    item.innerHTML = `
+      <div class="zone-info">
+        <div class="zone-name">${locationName}</div>
+        <div class="zone-details">
+          <span>Radius: ${zone.radius}m</span>
+          <span>Lat: ${zone.lat.toFixed(4)}</span>
+          <span>Lng: ${zone.lng.toFixed(4)}</span>
+        </div>
+      </div>
+      <div class="zone-actions">
+        <button class="view-zone-btn" data-id="${zone.id}" data-type="unsafe">View</button>
+        <button class="delete-zone-btn" data-id="${zone.id}" data-type="unsafe">Delete</button>
+      </div>
+    `;
+    
+    // Add click event to view zone on map
+    item.querySelector('.view-zone-btn').addEventListener('click', () => {
+      if (safeZonesMapInstance) {
+        safeZonesMapInstance.setView([zone.lat, zone.lng], 14);
+        // Highlight the zone on the map
+        safeZonesMapInstance.eachLayer(layer => {
+          if (layer instanceof L.Circle && layer.getLatLng().lat === zone.lat && layer.getLatLng().lng === zone.lng) {
+            layer.openPopup();
+          }
+        });
+      }
+    });
+    
+    // Add click event to delete zone
+    item.querySelector('.delete-zone-btn').addEventListener('click', () => {
+      if (confirm(`Are you sure you want to delete this unsafe zone?`)) {
+        deleteUnsafeZone(zone.id);
+      }
+    });
+    
+    list.appendChild(item);
+  });
 }
 
 function closeSafeZonesModal() {
@@ -497,8 +842,87 @@ function updateZoneTypeToggle() {
       btn.classList.add('active');
     }
   });
-  document.getElementById('saveSafeZoneBtn').textContent = 
-    currentZoneType === 'safe' ? 'Save Safe Zone' : 'Save Unsafe Zone';
+  const saveBtn = document.getElementById('saveSafeZoneBtn');
+  saveBtn.textContent = currentZoneType === 'safe' ? 'Save Safe Zone' : 'Save Unsafe Zone';
+  
+  // Update save button click handler
+  saveBtn.onclick = () => saveZone();
+}
+
+// Save zone (safe or unsafe)
+async function saveZone() {
+  if (!selectedZoneLatLng) {
+    alert('Please select a location on the map first');
+    return;
+  }
+  
+  const radiusInput = document.getElementById('zoneRadius');
+  const radius = parseInt(radiusInput.value, 10) || 500; // Default to 500m if invalid
+  
+  if (radius < 100 || radius > 5000) {
+    alert('Radius must be between 100m and 5000m');
+    return;
+  }
+  
+  const zoneData = {
+    lat: selectedZoneLatLng.lat,
+    lng: selectedZoneLatLng.lng,
+    radius: radius
+  };
+  
+  try {
+    const endpoint = currentZoneType === 'safe' ? 'safe-zones' : 'unsafe-zones';
+    const response = await fetch(`http://localhost:3000/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(zoneData)
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      
+      // Add to local array with the returned ID
+      if (currentZoneType === 'safe') {
+        safeZones.push({
+          id: result.id,
+          ...zoneData,
+          type: 'safe'
+        });
+        renderSafeZonesOnMap();
+        renderSafeZonesList();
+      } else {
+        unsafeZones.push({
+          id: result.id,
+          ...zoneData,
+          type: 'unsafe'
+        });
+        renderUnsafeZonesOnMap();
+        renderUnsafeZonesList();
+      }
+      
+      // Reset form
+      document.getElementById('placeSearch').value = '';
+      radiusInput.value = '500';
+      selectedZoneLatLng = null;
+      document.getElementById('saveSafeZoneBtn').disabled = true;
+      
+      // Show success message
+      alert(`${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} zone added successfully`);
+      
+      // Clear search results
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('searchResults').innerHTML = '';
+      document.getElementById('clearSearchBtn').style.display = 'none';
+    } else {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `Failed to add ${currentZoneType} zone`);
+    }
+  } catch (error) {
+    console.error(`Error adding ${currentZoneType} zone:`, error);
+    alert(`Error: ${error.message}`);
+  }
 }
 
 function initSafeZonesMap() {
