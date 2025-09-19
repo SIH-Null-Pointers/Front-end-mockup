@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -11,56 +12,100 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
-  <div class="topbar">
-    <div class="title">
-      India Tourist Safety Dashboard <span>Real-time monitoring</span>
-    </div>
-    <div class="status-bar">
-      <span class="status active">4 Active</span>
-      <span class="status abnormal">1 Abnormal</span>
-      <span class="status critical">1 Critical</span>
-      <span class="welcome">Welcome, admin</span>
-    </div>
-  </div>
+<body class="maps-layout">
+  <!-- Full-screen map container -->
+  <div id="map" class="fullscreen-map"></div>
 
-  <div class="header">
-    <div>
-      <h1>India Tourist Management System</h1>
-      <p class="sub">Monitor tourist safety and location in real-time</p>
-    </div>
-    <div class="header-actions">
-      <button class="btn small" onclick="refreshDashboard()">⟳ Refresh</button>
-      <button class="btn small" id="addTouristBtn">➕ Add New Tourist</button>
-      <button class="btn small" id="manageSafeZonesBtn">🟢 Manage Safe Zones</button>
-      <button class="btn logout">Logout</button>
-    </div>
-  </div>
-
-  <div class="dashboard-grid">
-    <!-- Left Panel - Tourist List -->
-    <div class="panel">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3>Active Tourists (<span id="touristCount">0</span>)</h3>
+  <!-- Top Header Widget -->
+  <div class="top-widget">
+    <div class="widget-header">
+      <div class="title-section">
+        <h1><i class="fas fa-shield-alt"></i> India Tourist Safety Dashboard</h1>
+        <p class="subtitle">Real-time monitoring system</p>
       </div>
-      <div id="touristList"></div>
+      <div class="header-stats">
+        <div class="stat-item active">
+          <span class="stat-number" id="activeCount">4</span>
+          <span class="stat-label">Active</span>
+        </div>
+        <div class="stat-item warning">
+          <span class="stat-number" id="abnormalCount">1</span>
+          <span class="stat-label">Warning</span>
+        </div>
+        <div class="stat-item critical">
+          <span class="stat-number" id="criticalCount">1</span>
+          <span class="stat-label">Critical</span>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <!-- Middle Panel - Map -->
-    <div class="panel map-panel">
-      <h3>🗺️ India Real-Time Map</h3>
-      <div id="map"></div>
+  <!-- Control Panel Widget (Top Right) -->
+  <div class="control-widget">
+    <div class="control-buttons">
+      <button class="control-btn primary" onclick="refreshDashboard()" title="Refresh Dashboard">
+        <i class="fas fa-sync-alt"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="control-btn success" id="addTouristBtn" title="Add New Tourist">
+        <i class="fas fa-user-plus"></i>
+        <span>Add Tourist</span>
+      </button>
+      <button class="control-btn info" id="manageSafeZonesBtn" title="Manage Safe Zones">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Zones</span>
+      </button>
+      <button class="control-btn logout" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Logout</span>
+      </button>
     </div>
+  </div>
 
-    <!-- Right Panel - Activity Feed -->
-    <div class="panel">
+  <!-- Tourist List Widget (Left Side) -->
+  <div class="tourist-widget">
+    <div class="widget-header">
+      <h3><i class="fas fa-users"></i> Active Tourists (<span id="touristCount">0</span>)</h3>
+      <button class="minimize-btn" onclick="toggleWidget('tourist-widget')">
+        <i class="fas fa-minus"></i>
+      </button>
+    </div>
+    <div class="widget-content" id="touristList">
+      <!-- Tourist cards will be populated here -->
+    </div>
+  </div>
+
+  <!-- Activity Feed Widget (Bottom Right) -->
+  <div class="activity-widget">
+    <div class="widget-header">
       <div class="activity-summary">
-        <div class="summary critical">1 Critical</div>
-        <div class="summary warning">2 Warnings</div>
-        <div class="summary info">1 Info</div>
+        <div class="summary-item critical">
+          <span class="summary-number">1</span>
+          <span class="summary-label">Critical</span>
+        </div>
+        <div class="summary-item warning">
+          <span class="summary-number">2</span>
+          <span class="summary-label">Warnings</span>
+        </div>
+        <div class="summary-item info">
+          <span class="summary-number">1</span>
+          <span class="summary-label">Info</span>
+        </div>
       </div>
-      <h3>Activity Monitor</h3>
-      <div id="activityFeed"></div>
+      <button class="minimize-btn" onclick="toggleWidget('activity-widget')">
+        <i class="fas fa-minus"></i>
+      </button>
+    </div>
+    <div class="widget-content" id="activityFeed">
+      <!-- Activity items will be populated here -->
+    </div>
+  </div>
+
+  <!-- Search Widget (Top Center) -->
+  <div class="search-widget">
+    <div class="search-container">
+      <input type="text" placeholder="Search location..." class="search-input">
+      <button class="search-btn"><i class="fas fa-search"></i></button>
     </div>
   </div>
 
@@ -288,6 +333,45 @@
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script src="script.js"></script>
   <script type="module" src="realtime.js"></script>
+
+  <script>
+    // Toggle widget visibility
+    function toggleWidget(widgetClass) {
+      const widget = document.querySelector('.' + widgetClass);
+      const content = widget.querySelector('.widget-content');
+      const btn = widget.querySelector('.minimize-btn i');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        btn.className = 'fas fa-minus';
+        widget.classList.remove('minimized');
+      } else {
+        content.style.display = 'none';
+        btn.className = 'fas fa-plus';
+        widget.classList.add('minimized');
+      }
+    }
+
+    // Update header stats when data changes
+    function updateHeaderStats() {
+      const active = tourists.filter(t => t.status === 'normal').length;
+      const abnormal = tourists.filter(t => t.status === 'abnormal').length;
+      const critical = tourists.filter(t => t.status === 'critical').length;
+      
+      document.getElementById('activeCount').textContent = active;
+      document.getElementById('abnormalCount').textContent = abnormal;
+      document.getElementById('criticalCount').textContent = critical;
+      
+      // Also update the old selectors for backward compatibility
+      const activeEl = document.querySelector('.status.active');
+      const abnormalEl = document.querySelector('.status.abnormal');
+      const criticalEl = document.querySelector('.status.critical');
+      
+      if (activeEl) activeEl.textContent = `${active} Active`;
+      if (abnormalEl) abnormalEl.textContent = `${abnormal} Abnormal`;
+      if (criticalEl) criticalEl.textContent = `${critical} Critical`;
+    }
+  </script>
 </body>
 
 </html>

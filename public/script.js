@@ -93,17 +93,35 @@ eventSource.onmessage = (event) => {
   }
 };
 
-// Update header stats
+// Update header stats - Updated for new layout
 function updateHeaderStats() {
   const active = tourists.filter(t => t.status === 'normal').length;
   const abnormal = tourists.filter(t => t.status === 'abnormal').length;
   const critical = tourists.filter(t => t.status === 'critical').length;
-  document.querySelector('.status.active').textContent = `${active} Active`;
-  document.querySelector('.status.abnormal').textContent = `${abnormal} Abnormal`;
-  document.querySelector('.status.critical').textContent = `${critical} Critical`;
+  
+  // Update new header stats
+  const activeCount = document.getElementById('activeCount');
+  const abnormalCount = document.getElementById('abnormalCount');
+  const criticalCount = document.getElementById('criticalCount');
+  
+  if (activeCount) activeCount.textContent = active;
+  if (abnormalCount) abnormalCount.textContent = abnormal;
+  if (criticalCount) criticalCount.textContent = critical;
+  
+  // Also update activity summary
+  const activitySummary = document.querySelector('.activity-summary');
+  if (activitySummary) {
+    const criticalSummary = activitySummary.querySelector('.summary-item.critical .summary-number');
+    const warningSummary = activitySummary.querySelector('.summary-item.warning .summary-number');
+    const infoSummary = activitySummary.querySelector('.summary-item.info .summary-number');
+    
+    if (criticalSummary) criticalSummary.textContent = critical;
+    if (warningSummary) warningSummary.textContent = abnormal;
+    if (infoSummary) infoSummary.textContent = activities.filter(a => a.type === 'info').length || 1;
+  }
 }
 
-// Render tourists
+// Render tourists - Updated for new card design
 function renderTourists() {
   const list = document.getElementById('touristList');
   if (!list) return;
@@ -113,11 +131,15 @@ function renderTourists() {
     const card = document.createElement('div');
     card.className = 'tourist-card';
     card.innerHTML = `
-      <h4>${t.displayId} <span class="status ${t.status}">${t.status}</span></h4>
+      <h4>
+        <i class="fas fa-user-circle"></i>
+        ${t.displayId} 
+        <span class="status ${t.status}">${t.status}</span>
+      </h4>
       <p><strong>${t.name}</strong> • ${t.country}</p>
-      <p>Safety: ${t.safetyScore}%</p>
-      <p><i class="fa-solid fa-location-dot"></i> Last updated location</p>
-      ${t.complaint > 0 ? `<p style="color: #e67e22;">⚠️ ${t.complaint} active complaint(s)</p>` : ''}
+      <p><i class="fas fa-shield-alt"></i> Safety: ${t.safetyScore}%</p>
+      <p><i class="fas fa-location-dot"></i> Live location tracked</p>
+      ${t.complaint > 0 ? `<p style="color: #d93025;"><i class="fas fa-exclamation-triangle"></i> ${t.complaint} active complaint(s)</p>` : ''}
     `;
     card.addEventListener('click', () => openTouristModal(t.docId));
     // Smooth hover focus on map
@@ -129,7 +151,7 @@ function renderTourists() {
   document.getElementById('touristCount').textContent = tourists.length;
 }
 
-// Render activities
+// Render activities - Updated for new card design
 function renderActivities() {
   const feed = document.getElementById('activityFeed');
   if (!feed) return;
@@ -138,12 +160,19 @@ function renderActivities() {
   activities.forEach(a => {
     const card = document.createElement('div');
     card.className = `activity-card ${a.type}`;
-    card.textContent = `${a.text} (${a.time})`;
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <i class="fas fa-${a.type === 'critical' ? 'exclamation-triangle' : a.type === 'warning' ? 'exclamation-circle' : 'info-circle'}"></i>
+        <strong>${a.type.charAt(0).toUpperCase() + a.type.slice(1)} Alert</strong>
+      </div>
+      <div>${a.text}</div>
+      <div style="font-size: 12px; color: #5f6368; margin-top: 4px;">${a.time}</div>
+    `;
     feed.appendChild(card);
   });
 }
 
-// Render map
+// Render map - Updated for fullscreen layout
 function renderMap() {
   const mapContainer = document.getElementById('map');
   if (!mapContainer) return;
@@ -162,15 +191,23 @@ function renderMap() {
       maxBounds: INDIA_BOUNDS,
       maxBoundsViscosity: 1.0,
       worldCopyJump: false,
-    }).setView(INDIA_CENTER, 5); // India center, zoom level 5
+    }).setView(INDIA_CENTER, 6); // India center, zoom level 6 for better overview
 
     try { window.mapInstance = mapInstance; } catch (_) {}
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap contributors, © CARTO',
+    // Use satellite/hybrid tiles for better visual appeal
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: '© Esri, Maxar, Earthstar Geographics',
       subdomains: 'abcd',
       maxZoom: 18,
       minZoom: 5
+    }).addTo(mapInstance);
+
+    // Add labels overlay
+    L.tileLayer('https://stamen-tiles.a.ssl.fastly.net/toner-labels/{z}/{x}/{y}.png', {
+      attribution: '© Stamen Design, © OpenStreetMap contributors',
+      maxZoom: 18,
+      opacity: 0.7
     }).addTo(mapInstance);
 
     // Track user interaction to avoid fighting with auto-fit
@@ -193,9 +230,9 @@ function renderMap() {
   }
 
   const statusColors = {
-    normal: '#2ecc71',
-    abnormal: '#f39c12',
-    critical: '#e74c3c',
+    normal: '#137333',
+    abnormal: '#f9ab00',
+    critical: '#d93025',
   };
 
   // Update or create markers
@@ -218,15 +255,28 @@ function renderMap() {
       existing.setLatLng(t.location);
     } else {
       const marker = L.circleMarker(t.location, {
-        radius: 8,
+        radius: 10,
         fillColor: statusColors[t.status],
         color: statusColors[t.status],
-        weight: 2,
+        weight: 3,
         opacity: 1,
-        fillOpacity: 0.95,
+        fillOpacity: 0.8,
         className: `tourist-marker status-${t.status}`
       }).addTo(mapInstance);
-      marker.bindPopup(`<b>${t.name}</b><br>${t.country}<br>Status: ${t.status}<br>Safety: ${t.safetyScore}%`);
+      
+      marker.bindPopup(`
+        <div style="text-align: center; padding: 8px;">
+          <h4 style="margin: 0 0 8px 0; color: #202124;">${t.name}</h4>
+          <p style="margin: 4px 0; color: #5f6368;"><i class="fas fa-flag"></i> ${t.country}</p>
+          <p style="margin: 4px 0; color: #5f6368;"><i class="fas fa-shield-alt"></i> Safety: ${t.safetyScore}%</p>
+          <div style="margin: 8px 0;">
+            <span class="status ${t.status}" style="font-size: 12px;">${t.status.toUpperCase()}</span>
+          </div>
+          <button onclick="openTouristModal('${t.docId}')" style="background: #1a73e8; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+            View Details
+          </button>
+        </div>
+      `);
       touristMarkers[t.docId] = marker;
     }
   });
@@ -307,12 +357,12 @@ function renderMap() {
         mapInstance.flyToBounds(fitBounds.pad(0.2), { 
           animate: true, 
           duration: 0.6,
-          maxZoom: 18
+          maxZoom: 15
         });
       } catch (_) {
         mapInstance.fitBounds(fitBounds.pad(0.2), { 
           animate: true,
-          maxZoom: 18
+          maxZoom: 15
         });
       }
     }
@@ -337,14 +387,20 @@ function renderSafeZonesOnMap() {
     
     const circle = L.circle([zone.lat, zone.lng], {
       radius: zone.radius,
-      fillColor: '#2ecc71',
-      color: '#27ae60',
+      fillColor: '#137333',
+      color: '#0d652d',
       weight: 2,
       opacity: 0.8,
-      fillOpacity: 0.3,
+      fillOpacity: 0.15,
       className: 'safe-zone-circle'
     }).addTo(mapInstance);
-    circle.bindPopup(`Safe Zone<br>Radius: ${zone.radius}m`);
+    circle.bindPopup(`
+      <div style="text-align: center; padding: 8px;">
+        <h4 style="margin: 0 0 8px 0; color: #137333;"><i class="fas fa-shield-alt"></i> Safe Zone</h4>
+        <p style="margin: 4px 0; color: #5f6368;">Radius: ${zone.radius}m</p>
+        <p style="margin: 4px 0; color: #5f6368; font-size: 12px;">Lat: ${zone.lat.toFixed(4)}, Lng: ${zone.lng.toFixed(4)}</p>
+      </div>
+    `);
     safeZoneCircles[zone.id] = circle;
   });
 }
@@ -367,20 +423,33 @@ function renderUnsafeZonesOnMap() {
     
     const circle = L.circle([zone.lat, zone.lng], {
       radius: zone.radius,
-      fillColor: '#e74c3c',
-      color: '#c0392b',
+      fillColor: '#d93025',
+      color: '#b52d20',
       weight: 2,
       opacity: 0.8,
-      fillOpacity: 0.2,
+      fillOpacity: 0.1,
       className: 'unsafe-zone-circle'
     }).addTo(mapInstance);
-    circle.bindPopup(`Unsafe Zone<br>Radius: ${zone.radius}m`);
+    circle.bindPopup(`
+      <div style="text-align: center; padding: 8px;">
+        <h4 style="margin: 0 0 8px 0; color: #d93025;"><i class="fas fa-exclamation-triangle"></i> Unsafe Zone</h4>
+        <p style="margin: 4px 0; color: #5f6368;">Radius: ${zone.radius}m</p>
+        <p style="margin: 4px 0; color: #5f6368; font-size: 12px;">Lat: ${zone.lat.toFixed(4)}, Lng: ${zone.lng.toFixed(4)}</p>
+      </div>
+    `);
     unsafeZoneCircles[zone.id] = circle;
   });
 }
 
 // Manual refresh fallback
 function refreshDashboard() {
+  // Add loading state
+  const refreshBtn = document.querySelector('.control-btn.primary');
+  if (refreshBtn) {
+    refreshBtn.classList.add('loading');
+    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
+  }
+
   fetch('http://localhost:3000/tourists')
     .then(res => res.json())
     .then(data => {
@@ -407,7 +476,15 @@ function refreshDashboard() {
       renderMap();
       updateHeaderStats();
     })
-    .catch(error => console.error('Error fetching tourists:', error));
+    .catch(error => console.error('Error fetching tourists:', error))
+    .finally(() => {
+      // Remove loading state
+      if (refreshBtn) {
+        refreshBtn.classList.remove('loading');
+        refreshBtn.innerHTML = '<i class="fas fa-sync-alt"></i><span>Refresh</span>';
+      }
+    });
+    
   fetch('http://localhost:3000/activities')
     .then(res => res.json())
     .then(data => {
@@ -420,6 +497,38 @@ function refreshDashboard() {
   fetchUnsafeZones();
 }
 
+// Widget toggle functionality for mobile
+function toggleWidget(widgetClass) {
+  const widget = document.querySelector('.' + widgetClass);
+  if (!widget) return;
+  
+  const content = widget.querySelector('.widget-content');
+  const btn = widget.querySelector('.minimize-btn i');
+  
+  if (!content || !btn) return;
+  
+  if (content.style.display === 'none') {
+    content.style.display = 'block';
+    btn.className = 'fas fa-minus';
+    widget.classList.remove('minimized');
+    
+    // For mobile, add open class
+    if (window.innerWidth <= 768) {
+      widget.classList.add('open');
+    }
+  } else {
+    content.style.display = 'none';
+    btn.className = 'fas fa-plus';
+    widget.classList.add('minimized');
+    
+    // For mobile, remove open class
+    if (window.innerWidth <= 768) {
+      widget.classList.remove('open');
+    }
+  }
+}
+
+// Rest of the functions remain the same...
 // Fetch safe zones
 async function fetchSafeZones() {
   try {
@@ -463,27 +572,33 @@ function openSafeZonesModal() {
   const searchInput = document.getElementById('placeSearch');
   const searchResults = document.getElementById('searchResults');
   const clearBtn = document.getElementById('clearSearchBtn');
-  searchInput.value = '';
-  searchResults.style.display = 'none';
-  searchResults.innerHTML = '';
-  clearBtn.style.display = 'none';
+  if (searchInput) searchInput.value = '';
+  if (searchResults) {
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
+  }
+  if (clearBtn) clearBtn.style.display = 'none';
   selectedZoneLatLng = null;
-  document.getElementById('saveSafeZoneBtn').disabled = true;
+  const saveBtn = document.getElementById('saveSafeZoneBtn');
+  if (saveBtn) saveBtn.disabled = true;
 }
 
 function closeSafeZonesModal() {
   document.getElementById('safeZonesModal').style.display = 'none';
   selectedZoneLatLng = null;
-  document.getElementById('saveSafeZoneBtn').disabled = true;
+  const saveBtn = document.getElementById('saveSafeZoneBtn');
+  if (saveBtn) saveBtn.disabled = true;
   
   // Reset search
   const searchInput = document.getElementById('placeSearch');
   const searchResults = document.getElementById('searchResults');
   const clearBtn = document.getElementById('clearSearchBtn');
-  searchInput.value = '';
-  searchResults.style.display = 'none';
-  searchResults.innerHTML = '';
-  clearBtn.style.display = 'none';
+  if (searchInput) searchInput.value = '';
+  if (searchResults) {
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
+  }
+  if (clearBtn) clearBtn.style.display = 'none';
   
   if (safeZonesMapInstance) {
     safeZonesMapInstance.off('click');
@@ -497,8 +612,10 @@ function updateZoneTypeToggle() {
       btn.classList.add('active');
     }
   });
-  document.getElementById('saveSafeZoneBtn').textContent = 
-    currentZoneType === 'safe' ? 'Save Safe Zone' : 'Save Unsafe Zone';
+  const saveBtn = document.getElementById('saveSafeZoneBtn');
+  if (saveBtn) {
+    saveBtn.textContent = currentZoneType === 'safe' ? 'Save Safe Zone' : 'Save Unsafe Zone';
+  }
 }
 
 function initSafeZonesMap() {
@@ -544,7 +661,8 @@ function initSafeZonesMap() {
     
     // Set the selected location for zone creation
     selectedZoneLatLng = e.geocode.center;
-    document.getElementById('saveSafeZoneBtn').disabled = false;
+    const saveBtn = document.getElementById('saveSafeZoneBtn');
+    if (saveBtn) saveBtn.disabled = false;
     
     // Clear previous marker
     safeZonesMapInstance.eachLayer(layer => {
@@ -553,7 +671,7 @@ function initSafeZonesMap() {
       }
     });
     
-    const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
+    const markerColor = currentZoneType === 'safe' ? '#137333' : '#d93025';
     L.marker(selectedZoneLatLng, {
       icon: L.divIcon({
         className: 'custom-marker',
@@ -566,70 +684,13 @@ function initSafeZonesMap() {
     ).openPopup();
     
     // Hide search results
-    document.getElementById('searchResults').style.display = 'none';
-    document.getElementById('placeSearch').value = e.geocode.name;
-    document.getElementById('clearSearchBtn').style.display = 'inline-block';
+    const searchResults = document.getElementById('searchResults');
+    if (searchResults) searchResults.style.display = 'none';
+    const placeSearch = document.getElementById('placeSearch');
+    if (placeSearch) placeSearch.value = e.geocode.name;
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) clearBtn.style.display = 'inline-block';
   }).addTo(safeZonesMapInstance);
-
-  // Custom search handling
-  const searchInput = document.getElementById('placeSearch');
-  const searchResults = document.getElementById('searchResults');
-  const clearBtn = document.getElementById('clearSearchBtn');
-  const searchContainer = document.querySelector('.search-container');
-
-  searchInput.addEventListener('input', function(e) {
-    const query = e.target.value.trim();
-    if (query.length < 2) {
-      searchResults.style.display = 'none';
-      searchResults.innerHTML = '';
-      return;
-    }
-
-    // Use Nominatim API directly for better control
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=in&limit=5&viewbox=${INDIA_BOUNDS[0][1]},${INDIA_BOUNDS[0][0]},${INDIA_BOUNDS[1][1]},${INDIA_BOUNDS[1][0]}&bounded=1`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.length === 0) {
-          searchResults.innerHTML = '<div class="search-result-item">No places found</div>';
-        } else {
-          searchResults.innerHTML = data.map(place => `
-            <div class="search-result-item" onclick="selectSearchResult(${place.lat}, ${place.lon}, '${place.display_name.replace(/'/g, "\\'")}')">
-              <div class="search-result-name">${place.display_name.split(',')[0]}</div>
-              <div class="search-result-address">${place.display_name}</div>
-            </div>
-          `).join('');
-        }
-        searchResults.style.display = 'block';
-      })
-      .catch(error => {
-        console.error('Search error:', error);
-        searchResults.innerHTML = '<div class="search-result-item">Search error</div>';
-        searchResults.style.display = 'block';
-      });
-  });
-
-  clearBtn.addEventListener('click', function() {
-    searchInput.value = '';
-    searchResults.style.display = 'none';
-    searchResults.innerHTML = '';
-    clearBtn.style.display = 'none';
-    selectedZoneLatLng = null;
-    document.getElementById('saveSafeZoneBtn').disabled = true;
-    
-    // Clear marker
-    safeZonesMapInstance.eachLayer(layer => {
-      if (layer instanceof L.Marker && layer.options.icon.options.html) {
-        safeZonesMapInstance.removeLayer(layer);
-      }
-    });
-  });
-
-  // Hide results when clicking outside
-  document.addEventListener('click', function(e) {
-    if (!searchContainer.contains(e.target)) {
-      searchResults.style.display = 'none';
-    }
-  });
 
   // Click to mark spot - restrict to India bounds
   safeZonesMapInstance.on('click', (e) => {
@@ -640,10 +701,8 @@ function initSafeZonesMap() {
     if (lat >= INDIA_BOUNDS[0][0] && lat <= INDIA_BOUNDS[1][0] &&
         lng >= INDIA_BOUNDS[0][1] && lng <= INDIA_BOUNDS[1][1]) {
       selectedZoneLatLng = e.latlng;
-      document.getElementById('saveSafeZoneBtn').disabled = false;
-      
-      // Hide search results when clicking on map
-      searchResults.style.display = 'none';
+      const saveBtn = document.getElementById('saveSafeZoneBtn');
+      if (saveBtn) saveBtn.disabled = false;
       
       // Clear previous marker
       safeZonesMapInstance.eachLayer(layer => {
@@ -652,7 +711,7 @@ function initSafeZonesMap() {
         }
       });
       
-      const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
+      const markerColor = currentZoneType === 'safe' ? '#137333' : '#d93025';
       L.marker(selectedZoneLatLng, {
         icon: L.divIcon({
           className: 'custom-marker',
@@ -663,10 +722,6 @@ function initSafeZonesMap() {
       }).addTo(safeZonesMapInstance).bindPopup(
         `${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center<br>Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
       ).openPopup();
-      
-      // Clear search input when clicking on map
-      searchInput.value = '';
-      clearBtn.style.display = 'none';
     } else {
       alert('Please click within India boundaries to create a zone.');
     }
@@ -678,11 +733,11 @@ function initSafeZonesMap() {
         zone.lng >= INDIA_BOUNDS[0][1] && zone.lng <= INDIA_BOUNDS[1][1]) {
       L.circle([zone.lat, zone.lng], {
         radius: zone.radius,
-        fillColor: '#2ecc71',
-        color: '#27ae60',
+        fillColor: '#137333',
+        color: '#0d652d',
         weight: 2,
         opacity: 0.8,
-        fillOpacity: 0.3,
+        fillOpacity: 0.15,
         className: 'safe-zone-circle'
       }).addTo(safeZonesMapInstance).bindPopup(`Safe Zone<br>Radius: ${zone.radius}m`);
     }
@@ -693,11 +748,11 @@ function initSafeZonesMap() {
         zone.lng >= INDIA_BOUNDS[0][1] && zone.lng <= INDIA_BOUNDS[1][1]) {
       L.circle([zone.lat, zone.lng], {
         radius: zone.radius,
-        fillColor: '#e74c3c',
-        color: '#c0392b',
+        fillColor: '#d93025',
+        color: '#b52d20',
         weight: 2,
         opacity: 0.8,
-        fillOpacity: 0.2,
+        fillOpacity: 0.1,
         className: 'unsafe-zone-circle'
       }).addTo(safeZonesMapInstance).bindPopup(`Unsafe Zone<br>Radius: ${zone.radius}m`);
     }
@@ -705,51 +760,6 @@ function initSafeZonesMap() {
 
   // Center map view
   safeZonesMapInstance.setView(INDIA_CENTER, 5);
-}
-
-// Global function for search result selection
-function selectSearchResult(lat, lng, name) {
-  const latLng = L.latLng(lat, lng);
-  
-  // Check if within India bounds
-  if (lat >= INDIA_BOUNDS[0][0] && lat <= INDIA_BOUNDS[1][0] &&
-      lng >= INDIA_BOUNDS[0][1] && lng <= INDIA_BOUNDS[1][1]) {
-    
-    selectedZoneLatLng = latLng;
-    document.getElementById('saveSafeZoneBtn').disabled = false;
-    
-    // Clear previous marker
-    safeZonesMapInstance.eachLayer(layer => {
-      if (layer instanceof L.Marker && layer.options.icon.options.html) {
-        safeZonesMapInstance.removeLayer(layer);
-      }
-    });
-    
-    const markerColor = currentZoneType === 'safe' ? '#2ecc71' : '#e74c3c';
-    L.marker(latLng, {
-      icon: L.divIcon({
-        className: 'custom-marker',
-        html: `<div style="background: ${markerColor}; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-      })
-    }).addTo(safeZonesMapInstance).bindPopup(
-      `Selected: ${name.split(',')[0]}<br>${currentZoneType === 'safe' ? 'Safe' : 'Unsafe'} Zone Center`
-    ).openPopup();
-    
-    // Center map on selection
-    safeZonesMapInstance.setView(latLng, 12);
-    
-    // Hide search results
-    const searchResults = document.getElementById('searchResults');
-    searchResults.style.display = 'none';
-    const searchInput = document.getElementById('placeSearch');
-    searchInput.value = name.split(',')[0];
-    const clearBtn = document.getElementById('clearSearchBtn');
-    clearBtn.style.display = 'inline-block';
-  } else {
-    alert('Selected location is outside India boundaries.');
-  }
 }
 
 function renderSafeZonesList() {
@@ -765,7 +775,8 @@ function renderSafeZonesList() {
     `;
     list.appendChild(card);
   });
-  document.getElementById('safeZonesCount').textContent = safeZones.length;
+  const countEl = document.getElementById('safeZonesCount');
+  if (countEl) countEl.textContent = safeZones.length;
 }
 
 function renderUnsafeZonesList() {
@@ -781,19 +792,22 @@ function renderUnsafeZonesList() {
     `;
     list.appendChild(card);
   });
-  document.getElementById('unsafeZonesCount').textContent = unsafeZones.length;
+  const countEl = document.getElementById('unsafeZonesCount');
+  if (countEl) countEl.textContent = unsafeZones.length;
 }
 
 async function saveZone() {
   if (!selectedZoneLatLng) return;
-  const radius = Number(document.getElementById('zoneRadius').value);
+  const radiusInput = document.getElementById('zoneRadius');
+  const radius = radiusInput ? Number(radiusInput.value) : 500;
   if (!Number.isFinite(radius) || radius < 50 || radius > 5000) {
-    document.getElementById('safeZonesError').textContent = 'Radius must be 50-5000m.';
+    const errorEl = document.getElementById('safeZonesError');
+    if (errorEl) errorEl.textContent = 'Radius must be 50-5000m.';
     return;
   }
 
   const errorEl = document.getElementById('safeZonesError');
-  errorEl.textContent = '';
+  if (errorEl) errorEl.textContent = '';
 
   try {
     const endpoint = currentZoneType === 'safe' ? '/safe-zones' : '/unsafe-zones';
@@ -817,7 +831,7 @@ async function saveZone() {
       fetchUnsafeZones();
     }
   } catch (e) {
-    errorEl.textContent = `❌ ${e.message}`;
+    if (errorEl) errorEl.textContent = `❌ ${e.message}`;
   }
 }
 
@@ -853,30 +867,45 @@ function openTouristModal(docId) {
   const t = getTouristByDocId(docId);
   if (!t) return;
 
-  document.getElementById('modalTitle').textContent = `Tourist: ${t.name}`;
-  document.getElementById('modalId').value = t.displayId;
-  document.getElementById('modalName').value = t.name || '';
-  document.getElementById('modalCountry').value = t.country || '';
-  document.getElementById('modalPhone').value = t.phone || '';
-  document.getElementById('modalSafety').value = t.safetyScore ?? 0;
+  const modalTitle = document.getElementById('modalTitle');
+  if (modalTitle) modalTitle.textContent = `Tourist: ${t.name}`;
+  
+  const fields = {
+    modalId: t.displayId,
+    modalName: t.name || '',
+    modalCountry: t.country || '',
+    modalPhone: t.phone || '',
+    modalSafety: t.safetyScore ?? 0,
+    modalLat: t.location?.[0] ?? 0,
+    modalLng: t.location?.[1] ?? 0
+  };
 
-  // Lat/Lng are read-only and driven by RTDB; fill current values
-  document.getElementById('modalLat').setAttribute('disabled', 'true');
-  document.getElementById('modalLng').setAttribute('disabled', 'true');
-  document.getElementById('modalLat').value = t.location?.[0] ?? 0;
-  document.getElementById('modalLng').value = t.location?.[1] ?? 0;
-  document.getElementById('modalError').textContent = '';
+  Object.entries(fields).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  });
+
+  // Lat/Lng are read-only and driven by RTDB
+  const latEl = document.getElementById('modalLat');
+  const lngEl = document.getElementById('modalLng');
+  if (latEl) latEl.setAttribute('disabled', 'true');
+  if (lngEl) lngEl.setAttribute('disabled', 'true');
+
+  const errorEl = document.getElementById('modalError');
+  if (errorEl) errorEl.textContent = '';
 
   // Show delete button
   const deleteBtn = document.getElementById('deleteBtn');
   if (deleteBtn) deleteBtn.style.display = 'block';
 
-  document.getElementById('touristModal').style.display = 'flex';
+  const modal = document.getElementById('touristModal');
+  if (modal) modal.style.display = 'flex';
 }
 
 function closeTouristModal() {
   currentTouristDocId = null;
-  document.getElementById('touristModal').style.display = 'none';
+  const modal = document.getElementById('touristModal');
+  if (modal) modal.style.display = 'none';
   const deleteBtn = document.getElementById('deleteBtn');
   if (deleteBtn) deleteBtn.style.display = 'none';
 }
@@ -887,10 +916,16 @@ async function saveTouristChanges() {
     if (errorEl) errorEl.textContent = 'Cannot save: missing document reference.';
     return;
   }
-  const name = document.getElementById('modalName').value.trim();
-  const country = document.getElementById('modalCountry').value.trim();
-  const phone = document.getElementById('modalPhone').value.trim();
-  const safetyScore = Number(document.getElementById('modalSafety').value);
+  
+  const nameEl = document.getElementById('modalName');
+  const countryEl = document.getElementById('modalCountry');
+  const phoneEl = document.getElementById('modalPhone');
+  const safetyEl = document.getElementById('modalSafety');
+  
+  const name = nameEl ? nameEl.value.trim() : '';
+  const country = countryEl ? countryEl.value.trim() : '';
+  const phone = phoneEl ? phoneEl.value.trim() : '';
+  const safetyScore = safetyEl ? Number(safetyEl.value) : 0;
 
   const errorEl = document.getElementById('modalError');
   if (errorEl) errorEl.textContent = '';
@@ -979,17 +1014,20 @@ function trackTourist() {
   const marker = touristMarkers[t.docId];
   if (marker) {
     if (typeof mapInstance.flyTo === 'function') {
-      mapInstance.flyTo(t.location, 13, { 
+      mapInstance.flyTo(t.location, 15, { 
         animate: true, 
         duration: 0.8,
         maxZoom: 18
       });
     } else {
-      mapInstance.setView(t.location, 13, { animate: true });
+      mapInstance.setView(t.location, 15, { animate: true });
     }
     marker.openPopup();
     // Persist follow target so refreshes keep us on the same tourist
     followTargetDocId = t.docId;
+    
+    // Close modal after tracking
+    closeTouristModal();
   }
 }
 
@@ -998,7 +1036,7 @@ function focusTourist(docId, zoom) {
   const t = tourists.find(x => x.docId === docId);
   if (!t || !mapInstance) return;
   const marker = touristMarkers[docId];
-  const targetZoom = Number.isFinite(zoom) ? zoom : Math.max(mapInstance.getZoom(), 12);
+  const targetZoom = Number.isFinite(zoom) ? zoom : Math.max(mapInstance.getZoom(), 13);
   if (typeof mapInstance.flyTo === 'function') {
     mapInstance.flyTo(t.location, targetZoom, { 
       animate: true, 
@@ -1020,21 +1058,19 @@ function openAddTouristModal() {
   const errorMsg = document.getElementById('addErrorMsg');
   
   // Clear all input fields
-  document.getElementById('touristFullName').value = '';
-  document.getElementById('touristNationality').value = '';
-  document.getElementById('touristIdType').value = '';
-  document.getElementById('touristIdNumber').value = '';
-  document.getElementById('touristPhone').value = '';
-  document.getElementById('touristAltPhone').value = '';
-  document.getElementById('touristEmail').value = '';
-  document.getElementById('touristLanguage').value = '';
+  const fields = [
+    'touristFullName', 'touristNationality', 'touristIdType', 'touristIdNumber',
+    'touristPhone', 'touristAltPhone', 'touristEmail', 'touristLanguage',
+    'familyMemberName', 'familyMemberNationality', 'familyMemberIdType', 'familyMemberBloodGroup'
+  ];
   
-  // Clear family member fields
-  document.getElementById('familyMemberName').value = '';
-  document.getElementById('familyMemberNationality').value = '';
-  document.getElementById('familyMemberIdType').value = '';
-  document.getElementById('familyMemberBloodGroup').value = '';
-  document.getElementById('familyMemberDetails').style.display = 'none';
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  
+  const familyDetails = document.getElementById('familyMemberDetails');
+  if (familyDetails) familyDetails.style.display = 'none';
   
   if (errorMsg) errorMsg.textContent = '';
   if (modal) modal.style.display = 'flex';
@@ -1046,76 +1082,60 @@ function closeAddTouristModal() {
 }
 
 async function createNewTourist() {
-  const fullName = document.getElementById('touristFullName').value.trim();
-  const nationality = document.getElementById('touristNationality').value;
-  const idType = document.getElementById('touristIdType').value.trim();
-  const idNumber = document.getElementById('touristIdNumber').value.trim();
-  const phone = document.getElementById('touristPhone').value.trim();
-  const altPhone = document.getElementById('touristAltPhone').value.trim();
-  const email = document.getElementById('touristEmail').value.trim();
-  const language = document.getElementById('touristLanguage').value.trim();
+  const getFieldValue = (id) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+  
+  const fullName = getFieldValue('touristFullName');
+  const nationality = getFieldValue('touristNationality');
+  const idType = getFieldValue('touristIdType');
+  const idNumber = getFieldValue('touristIdNumber');
+  const phone = getFieldValue('touristPhone');
+  const altPhone = getFieldValue('touristAltPhone');
+  const email = getFieldValue('touristEmail');
+  const language = getFieldValue('touristLanguage');
   
   // Family member data
-  const familyMemberName = document.getElementById('familyMemberName').value.trim();
-  const familyMemberNationality = document.getElementById('familyMemberNationality').value;
-  const familyMemberIdType = document.getElementById('familyMemberIdType').value.trim();
-  const familyMemberBloodGroup = document.getElementById('familyMemberBloodGroup').value;
+  const familyMemberName = getFieldValue('familyMemberName');
+  const familyMemberNationality = getFieldValue('familyMemberNationality');
+  const familyMemberIdType = getFieldValue('familyMemberIdType');
+  const familyMemberBloodGroup = getFieldValue('familyMemberBloodGroup');
   
   const errorEl = document.getElementById('addErrorMsg');
-
   if (!errorEl) return;
 
   // Validate required fields
-  if (!fullName) {
-    errorEl.textContent = 'Please enter the full name.';
-    return;
-  }
-  
-  if (!nationality) {
-    errorEl.textContent = 'Please select nationality.';
-    return;
-  }
-  
-  if (!idType) {
-    errorEl.textContent = 'Please enter the type of identification.';
-    return;
-  }
-  
-  if (!idNumber) {
-    errorEl.textContent = 'Please enter the identification number.';
-    return;
-  }
-  
-  if (!phone) {
-    errorEl.textContent = 'Please enter the phone number.';
-    return;
-  }
-  
-  if (!email || !email.includes('@')) {
-    errorEl.textContent = 'Please enter a valid email address.';
-    return;
-  }
-  
-  if (!language) {
-    errorEl.textContent = 'Please enter the preferred language.';
-    return;
+  const validations = [
+    [!fullName, 'Please enter the full name.'],
+    [!nationality, 'Please select nationality.'],
+    [!idType, 'Please enter the type of identification.'],
+    [!idNumber, 'Please enter the identification number.'],
+    [!phone, 'Please enter the phone number.'],
+    [!email || !email.includes('@'), 'Please enter a valid email address.'],
+    [!language, 'Please enter the preferred language.']
+  ];
+
+  for (const [condition, message] of validations) {
+    if (condition) {
+      errorEl.textContent = message;
+      return;
+    }
   }
   
   // Validate family member details if name is provided
   if (familyMemberName) {
-    if (!familyMemberNationality) {
-      errorEl.textContent = 'Please select family member nationality.';
-      return;
-    }
-    
-    if (!familyMemberIdType) {
-      errorEl.textContent = 'Please enter family member type of identification.';
-      return;
-    }
-    
-    if (!familyMemberBloodGroup) {
-      errorEl.textContent = 'Please select family member blood group.';
-      return;
+    const familyValidations = [
+      [!familyMemberNationality, 'Please select family member nationality.'],
+      [!familyMemberIdType, 'Please enter family member type of identification.'],
+      [!familyMemberBloodGroup, 'Please select family member blood group.']
+    ];
+
+    for (const [condition, message] of familyValidations) {
+      if (condition) {
+        errorEl.textContent = message;
+        return;
+      }
     }
   }
 
@@ -1176,11 +1196,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   refreshDashboard();
 
-  // Header buttons - Handle multiple .btn.small elements
-  const refreshBtns = document.querySelectorAll('.btn.small');
-  refreshBtns[0]?.addEventListener('click', refreshDashboard);
-  
-  const logoutBtn = document.querySelector('.btn.logout');
+  // Header buttons - Updated for new layout
+  const logoutBtn = document.querySelector('.control-btn.logout');
   logoutBtn?.addEventListener('click', () => {
     localStorage.removeItem('isLoggedIn');
     window.location.href = 'login.html';
@@ -1194,10 +1211,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const familyMemberNameInput = document.getElementById('familyMemberName');
   familyMemberNameInput?.addEventListener('input', function() {
     const familyDetails = document.getElementById('familyMemberDetails');
-    if (this.value.trim() !== '') {
-      familyDetails.style.display = 'block';
-    } else {
-      familyDetails.style.display = 'none';
+    if (familyDetails) {
+      familyDetails.style.display = this.value.trim() !== '' ? 'block' : 'none';
     }
   });
 
@@ -1261,20 +1276,62 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.id === 'touristModal') closeTouristModal();
   });
 
+  // Mobile responsive handlers
+  if (window.innerWidth <= 768) {
+    // Make widgets toggleable on mobile
+    const touristWidget = document.querySelector('.tourist-widget');
+    const activityWidget = document.querySelector('.activity-widget');
+    
+    if (touristWidget) {
+      const header = touristWidget.querySelector('.widget-header');
+      header?.addEventListener('click', () => {
+        touristWidget.classList.toggle('open');
+      });
+    }
+    
+    if (activityWidget) {
+      const header = activityWidget.querySelector('.widget-header');
+      header?.addEventListener('click', () => {
+        activityWidget.classList.toggle('open');
+      });
+    }
+  }
+
   // Keyboard navigation
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      const touristModal = document.getElementById('touristModal');
-      const safeZonesModal = document.getElementById('safeZonesModal');
-      const addTouristModal = document.getElementById('addTouristModal');
+      const modals = [
+        'touristModal', 'safeZonesModal', 'addTouristModal', 'panicAlertOverlay'
+      ];
       
-      if (touristModal?.style.display === 'flex') {
-        closeTouristModal();
-      } else if (safeZonesModal?.style.display === 'flex') {
-        closeSafeZonesModal();
-      } else if (addTouristModal?.style.display === 'flex') {
-        closeAddTouristModal();
+      for (const modalId of modals) {
+        const modal = document.getElementById(modalId);
+        if (modal?.style.display === 'flex') {
+          if (modalId === 'touristModal') closeTouristModal();
+          else if (modalId === 'safeZonesModal') closeSafeZonesModal();
+          else if (modalId === 'addTouristModal') closeAddTouristModal();
+          else if (modalId === 'panicAlertOverlay') {
+            const closeBtn = document.getElementById('panicCloseBtn');
+            if (closeBtn) closeBtn.click();
+          }
+          break;
+        }
       }
+    }
+  });
+
+  // Window resize handler for responsive design
+  window.addEventListener('resize', () => {
+    if (mapInstance) {
+      setTimeout(() => {
+        mapInstance.invalidateSize();
+      }, 100);
+    }
+    
+    if (safeZonesMapInstance) {
+      setTimeout(() => {
+        safeZonesMapInstance.invalidateSize();
+      }, 100);
     }
   });
 });
