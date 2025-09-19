@@ -250,11 +250,16 @@ app.delete('/tourists/:docId', async (req, res) => {
   }
 });
 
-// Add new tourist: create Auth user with temporary password and send reset email
+// Add new tourist: create Auth user with temporary password
 app.post('/add-tourist', async (req, res) => {
-  const { email } = req.body || {};
+  const { fullName, nationality, idType, idNumber, phone, altPhone, email, language, familyMember } = req.body || {};
+  
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
+  }
+
+  if (!fullName || !nationality || !idType || !idNumber || !phone || !language) {
+    return res.status(400).json({ error: 'All fields are required' });
   }
 
   try {
@@ -265,33 +270,49 @@ app.post('/add-tourist', async (req, res) => {
       emailVerified: false
     });
 
-    // Generate password reset link and send email manually
-    const resetLink = await admin.auth().generatePasswordResetLink(email);
-    
-    // Send the password reset email
-    const actionCodeSettings = {
-      url: resetLink, // This will be the deep link
-      handleCodeInApp: true
-    };
+    // Generate password reset link (for client-side use)
+    let resetLink = '';
+    try {
+      resetLink = await admin.auth().generatePasswordResetLink(email);
+    } catch (linkError) {
+      console.warn('Could not generate password reset link:', linkError.message);
+      // We'll still create the user even if we can't generate the link
+    }
 
-    await admin.auth().sendPasswordResetEmail(email, actionCodeSettings);
-
-    // Create initial Firestore user doc
-    await admin.firestore().collection('users').doc(userRecord.uid).set({
+    // Prepare user data
+    const userData = {
       userId: userRecord.uid,
       email: email,
-      name: 'New Tourist',
-      nationality: 'N/A',
-      phone: 'N/A',
+      name: fullName,
+      nationality: nationality,
+      phone: phone,
+      altPhone: altPhone || '',
+      idType: idType,
+      idNumber: idNumber,
+      preferredLanguage: language,
       safetyScore: 85,
       location: { latitude: 0, longitude: 0 },
       createdAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    };
+
+    // Add family member data if provided
+    if (familyMember) {
+      userData.familyMember = {
+        name: familyMember.name,
+        nationality: familyMember.nationality,
+        idType: familyMember.idType,
+        bloodGroup: familyMember.bloodGroup
+      };
+    }
+
+    // Create initial Firestore user doc with all provided information
+    await admin.firestore().collection('users').doc(userRecord.uid).set(userData, { merge: true });
 
     res.json({ 
       ok: true, 
       uid: userRecord.uid,
-      message: 'Tourist created successfully. Password reset email sent.'
+      resetLink: resetLink, // Send the reset link to the client
+      message: 'Tourist created successfully.'
     });
   } catch (error) {
     console.error('Error creating tourist:', error);
