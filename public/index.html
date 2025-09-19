@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,496 +6,372 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>India Tourist Management System Admin Dashboard</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 
-<body>
-  <!-- Modern Topbar with Glass Effect -->
-  <div class="topbar">
-    <div class="topbar-content">
+<body class="maps-layout">
+  <!-- Full-screen map container -->
+  <div id="map" class="fullscreen-map"></div>
+
+  <!-- Top Header Widget -->
+  <div class="top-widget">
+    <div class="widget-header">
       <div class="title-section">
-        <div class="logo-wrapper">
-          <i class="fas fa-shield-alt logo-icon"></i>
-        </div>
-        <div class="title-text">
-          <span class="main-title">Tourist Safety Hub</span>
-          <span class="subtitle">Real-time Security Monitoring</span>
-        </div>
+        <h1><i class="fas fa-shield-alt"></i> India Tourist Safety Dashboard</h1>
+        <p class="subtitle">Real-time monitoring system</p>
       </div>
-      
-      <div class="status-indicators">
-        <div class="status-card active">
-          <div class="status-number" id="activeCount">4</div>
-          <div class="status-label">Active</div>
-          <div class="status-icon"><i class="fas fa-check-circle"></i></div>
+      <div class="header-stats">
+        <div class="stat-item active">
+          <span class="stat-number" id="activeCount">4</span>
+          <span class="stat-label">Active</span>
         </div>
-        <div class="status-card warning">
-          <div class="status-number" id="warningCount">1</div>
-          <div class="status-label">Warnings</div>
-          <div class="status-icon"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-item warning">
+          <span class="stat-number" id="abnormalCount">1</span>
+          <span class="stat-label">Warning</span>
         </div>
-        <div class="status-card critical">
-          <div class="status-number" id="criticalCount">1</div>
-          <div class="status-label">Critical</div>
-          <div class="status-icon"><i class="fas fa-exclamation-circle"></i></div>
-        </div>
-      </div>
-      
-      <div class="admin-section">
-        <div class="admin-info">
-          <div class="admin-avatar">
-            <i class="fas fa-user-shield"></i>
-          </div>
-          <div class="admin-text">
-            <span class="admin-name">Administrator</span>
-            <span class="admin-role">System Admin</span>
-          </div>
+        <div class="stat-item critical">
+          <span class="stat-number" id="criticalCount">1</span>
+          <span class="stat-label">Critical</span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Enhanced Header with Better Actions -->
-  <div class="main-header">
-    <div class="header-content">
-      <div class="header-info">
-        <h1 class="page-title">
-          <span class="title-icon"><i class="fas fa-globe-asia"></i></span>
-          India Tourist Management System
-        </h1>
-        <p class="page-subtitle">
-          <i class="fas fa-satellite-dish"></i>
-          Monitor tourist safety and location in real-time across India
-        </p>
-      </div>
-      
-      <div class="header-actions">
-        <button class="action-btn refresh-btn" onclick="refreshDashboard()">
-          <i class="fas fa-sync-alt"></i>
-          <span>Refresh</span>
-        </button>
-        <button class="action-btn add-btn" id="addTouristBtn">
-          <i class="fas fa-user-plus"></i>
-          <span>Add Tourist</span>
-        </button>
-        <button class="action-btn zones-btn" id="manageSafeZonesBtn">
-          <i class="fas fa-map-marked-alt"></i>
-          <span>Manage Zones</span>
-        </button>
-        <button class="action-btn logout-btn">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Logout</span>
-        </button>
-      </div>
+  <!-- Control Panel Widget (Top Right) -->
+  <div class="control-widget">
+    <div class="control-buttons">
+      <button class="control-btn primary" onclick="refreshDashboard()" title="Refresh Dashboard">
+        <i class="fas fa-sync-alt"></i>
+        <span>Refresh</span>
+      </button>
+      <button class="control-btn success" id="addTouristBtn" title="Add New Tourist">
+        <i class="fas fa-user-plus"></i>
+        <span>Add Tourist</span>
+      </button>
+      <button class="control-btn info" id="manageSafeZonesBtn" title="Manage Safe Zones">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Zones</span>
+      </button>
+      <button class="control-btn logout" title="Logout">
+        <i class="fas fa-sign-out-alt"></i>
+        <span>Logout</span>
+      </button>
     </div>
   </div>
 
-  <!-- Enhanced Dashboard Grid -->
-  <div class="dashboard-container">
-    <div class="dashboard-grid">
-      <!-- Enhanced Left Panel - Tourist List -->
-      <div class="dashboard-panel tourists-panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <i class="fas fa-users"></i>
-            <span>Active Tourists</span>
-            <div class="count-badge" id="touristCount">0</div>
-          </div>
-          <div class="panel-actions">
-            <button class="mini-btn" onclick="refreshDashboard()">
-              <i class="fas fa-refresh"></i>
-            </button>
-          </div>
-        </div>
-        <div class="panel-content">
-          <div id="touristList" class="tourist-list"></div>
-        </div>
-      </div>
-
-      <!-- Enhanced Middle Panel - Interactive Map -->
-      <div class="dashboard-panel map-panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <i class="fas fa-map"></i>
-            <span>Real-Time Location Map</span>
-          </div>
-          <div class="map-controls">
-            <button class="mini-btn" onclick="centerMapOnIndia()">
-              <i class="fas fa-home"></i>
-            </button>
-            <button class="mini-btn" onclick="toggleMapStyle()">
-              <i class="fas fa-layer-group"></i>
-            </button>
-          </div>
-        </div>
-        <div class="panel-content map-container">
-          <div id="map" class="interactive-map"></div>
-        </div>
-      </div>
-
-      <!-- Enhanced Right Panel - Activity Feed -->
-      <div class="dashboard-panel activity-panel">
-        <div class="panel-header">
-          <div class="panel-title">
-            <i class="fas fa-bell"></i>
-            <span>Activity Monitor</span>
-          </div>
-        </div>
-        <div class="activity-summary">
-          <div class="summary-item critical">
-            <div class="summary-count">1</div>
-            <div class="summary-label">Critical</div>
-          </div>
-          <div class="summary-item warning">
-            <div class="summary-count">2</div>
-            <div class="summary-label">Warnings</div>
-          </div>
-          <div class="summary-item info">
-            <div class="summary-count">1</div>
-            <div class="summary-label">Updates</div>
-          </div>
-        </div>
-        <div class="panel-content">
-          <div id="activityFeed" class="activity-feed"></div>
-        </div>
-      </div>
+  <!-- Tourist List Widget (Left Side) -->
+  <div class="tourist-widget">
+    <div class="widget-header">
+      <h3><i class="fas fa-users"></i> Active Tourists (<span id="touristCount">0</span>)</h3>
+      <button class="minimize-btn" onclick="toggleWidget('tourist-widget')">
+        <i class="fas fa-minus"></i>
+      </button>
+    </div>
+    <div class="widget-content" id="touristList">
+      <!-- Tourist cards will be populated here -->
     </div>
   </div>
 
-  <!-- Enhanced Tourist Details Modal -->
+  <!-- Activity Feed Widget (Bottom Right) -->
+  <div class="activity-widget">
+    <div class="widget-header">
+      <div class="activity-summary">
+        <div class="summary-item critical">
+          <span class="summary-number">1</span>
+          <span class="summary-label">Critical</span>
+        </div>
+        <div class="summary-item warning">
+          <span class="summary-number">2</span>
+          <span class="summary-label">Warnings</span>
+        </div>
+        <div class="summary-item info">
+          <span class="summary-number">1</span>
+          <span class="summary-label">Info</span>
+        </div>
+      </div>
+      <button class="minimize-btn" onclick="toggleWidget('activity-widget')">
+        <i class="fas fa-minus"></i>
+      </button>
+    </div>
+    <div class="widget-content" id="activityFeed">
+      <!-- Activity items will be populated here -->
+    </div>
+  </div>
+
+  <!-- Search Widget (Top Center) -->
+  <div class="search-widget">
+    <div class="search-container">
+      <input type="text" placeholder="Search location..." class="search-input">
+      <button class="search-btn"><i class="fas fa-search"></i></button>
+    </div>
+  </div>
+
+  <!-- Tourist Details Modal -->
   <div id="touristModal" class="modal-overlay" style="display: none;">
-    <div class="modal enhanced-modal">
+    <div class="modal">
       <div class="modal-header">
-        <div class="modal-title-section">
-          <div class="modal-icon">
-            <i class="fas fa-user-circle"></i>
-          </div>
-          <h3 id="modalTitle">Tourist Details</h3>
-        </div>
-        <button id="closeModalBtn" class="close-btn">
-          <i class="fas fa-times"></i>
-        </button>
+        <h3 id="modalTitle">Tourist Details</h3>
+        <button id="closeModalBtn">✕</button>
       </div>
       <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label><i class="fas fa-id-badge"></i> Tourist ID</label>
-            <input type="text" id="modalId" readonly class="readonly-input">
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-user"></i> Full Name</label>
-            <input type="text" id="modalName">
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-flag"></i> Nationality</label>
-            <input type="text" id="modalCountry">
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-phone"></i> Phone Number</label>
-            <input type="tel" id="modalPhone">
-          </div>
-          <div class="form-group full-width">
-            <label><i class="fas fa-shield-alt"></i> Safety Score</label>
-            <div class="safety-score-container">
-              <input type="number" id="modalSafety" min="0" max="100">
-              <div class="safety-indicator" id="safetyIndicator"></div>
-            </div>
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-map-marker-alt"></i> Latitude</label>
-            <input type="number" id="modalLat" step="any" readonly class="readonly-input">
-          </div>
-          <div class="form-group">
-            <label><i class="fas fa-map-marker-alt"></i> Longitude</label>
-            <input type="number" id="modalLng" step="any" readonly class="readonly-input">
+        <div class="modal-row">
+          <label>ID</label>
+          <input type="text" id="modalId" readonly>
+        </div>
+        <div class="modal-row">
+          <label>Name</label>
+          <input type="text" id="modalName">
+        </div>
+        <div class="modal-row">
+          <label>Nationality</label>
+          <input type="text" id="modalCountry">
+        </div>
+        <div class="modal-row">
+          <label>Phone</label>
+          <input type="tel" id="modalPhone">
+        </div>
+        <div class="modal-row">
+          <label>Safety Score</label>
+          <input type="number" id="modalSafety" min="0" max="100">
+        </div>
+        <div class="modal-row">
+          <label>Location (lat, lng) — live from device</label>
+          <div class="split">
+            <input type="number" id="modalLat" step="any" readonly>
+            <input type="number" id="modalLng" step="any" readonly>
           </div>
         </div>
-        <p id="modalError" class="error-message"></p>
+        <p id="modalError" style="color: red; font-size: 0.9rem;"></p>
         <div class="modal-actions">
-          <button class="action-btn delete-btn" id="deleteBtn">
-            <i class="fas fa-trash"></i>
-            <span>Delete</span>
-          </button>
-          <button class="action-btn contact-btn" id="contactBtn">
-            <i class="fas fa-phone"></i>
-            <span>Contact</span>
-          </button>
-          <button class="action-btn track-btn" id="trackBtn">
-            <i class="fas fa-crosshairs"></i>
-            <span>Track</span>
-          </button>
-          <button class="action-btn save-btn" id="saveBtn">
-            <i class="fas fa-save"></i>
-            <span>Save Changes</span>
-          </button>
+          <button class="btn delete" id="deleteBtn">🗑️ Delete</button>
+          <button class="btn" id="contactBtn">📞 Contact</button>
+          <button class="btn" id="trackBtn">📍 Track</button>
+          <button class="btn small" id="saveBtn">Save Changes</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Enhanced Add New Tourist Modal -->
+  <!-- Add New Tourist Modal -->
   <div id="addTouristModal" class="modal-overlay" style="display: none;">
-    <div class="modal large-modal">
-      <div class="modal-header gradient-header">
-        <div class="modal-title-section">
-          <div class="modal-icon">
-            <i class="fas fa-user-plus"></i>
-          </div>
-          <h3>Add New Tourist</h3>
-        </div>
-        <button id="closeAddModalBtn" class="close-btn">
-          <i class="fas fa-times"></i>
-        </button>
+    <div class="modal tourist-modal">
+      <div class="modal-header">
+        <h3>➕ Add New Tourist</h3>
+        <button id="closeAddModalBtn" class="modal-close-btn">×</button>
       </div>
       <div class="modal-body">
-        <div class="form-sections">
-          <div class="form-section">
-            <div class="section-header">
-              <i class="fas fa-user"></i>
-              <h4>Personal Information</h4>
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Full Name *</label>
-                <input type="text" id="touristFullName" placeholder="Enter full name" required>
-              </div>
-              <div class="form-group">
-                <label>Nationality *</label>
-                <select id="touristNationality" required>
-                  <option value="">Select nationality</option>
-                  <option value="Indian">Indian</option>
-                  <option value="Foreign">Foreign tourist</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Preferred Language *</label>
-                <input type="text" id="touristLanguage" placeholder="e.g., English, Hindi, etc." required>
-              </div>
-            </div>
+        <div class="form-section">
+          <h4>Personal Information</h4>
+          <div class="modal-row">
+            <label for="touristFullName">Full Name *</label>
+            <input type="text" id="touristFullName" placeholder="Enter full name" required>
+          </div>
+          <div class="modal-row">
+            <label for="touristNationality">Nationality *</label>
+            <select id="touristNationality" required>
+              <option value="">Select nationality</option>
+              <option value="Indian">Indian</option>
+              <option value="Foreign">Foreign tourist</option>
+            </select>
+          </div>
+          <div class="modal-row">
+            <label for="touristLanguage">Preferred Language *</label>
+            <input type="text" id="touristLanguage" placeholder="e.g., English, Hindi, etc." required>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h4>Identification</h4>
+          <div class="modal-row">
+            <label for="touristIdType">Type of Identification *</label>
+            <input type="text" id="touristIdType" placeholder="e.g., Passport, Aadhar, Driver's License" required>
+          </div>
+          <div class="modal-row">
+            <label for="touristIdNumber">Identification Number *</label>
+            <input type="text" id="touristIdNumber" placeholder="Enter ID number" required>
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h4>Contact Information</h4>
+          <div class="modal-row">
+            <label for="touristEmail">Email Address *</label>
+            <input type="email" id="touristEmail" placeholder="user@example.com" required>
+          </div>
+          <div class="modal-row">
+            <label for="touristPhone">Phone Number * (with country code)</label>
+            <input type="tel" id="touristPhone" placeholder="e.g., +91 9876543210" required>
+          </div>
+          <div class="modal-row">
+            <label for="touristAltPhone">Alternate Phone/WhatsApp (optional)</label>
+            <input type="tel" id="touristAltPhone" placeholder="e.g., +91 9876543210">
+          </div>
+        </div>
+        
+        <div class="form-section">
+          <h4>Family Member Information (Optional)</h4>
+          <div class="modal-row">
+            <label for="familyMemberName">Family Member Name</label>
+            <input type="text" id="familyMemberName" placeholder="Enter family member's name">
           </div>
           
-          <div class="form-section">
-            <div class="section-header">
-              <i class="fas fa-id-card"></i>
-              <h4>Identification Details</h4>
+          <!-- Family member details container (initially hidden) -->
+          <div id="familyMemberDetails" style="display: none;">
+            <div class="modal-row">
+              <label for="familyMemberNationality">Nationality *</label>
+              <select id="familyMemberNationality">
+                <option value="">Select nationality</option>
+                <option value="Indian">Indian</option>
+                <option value="Foreign">Foreign tourist</option>
+              </select>
             </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>ID Type *</label>
-                <input type="text" id="touristIdType" placeholder="e.g., Passport, Aadhar, Driver's License" required>
-              </div>
-              <div class="form-group">
-                <label>ID Number *</label>
-                <input type="text" id="touristIdNumber" placeholder="Enter ID number" required>
-              </div>
+            <div class="modal-row">
+              <label for="familyMemberIdType">Type of Identification *</label>
+              <input type="text" id="familyMemberIdType" placeholder="e.g., Passport, Aadhar, Driver's License">
             </div>
-          </div>
-          
-          <div class="form-section">
-            <div class="section-header">
-              <i class="fas fa-address-book"></i>
-              <h4>Contact Information</h4>
-            </div>
-            <div class="form-grid">
-              <div class="form-group">
-                <label>Email Address *</label>
-                <input type="email" id="touristEmail" placeholder="user@example.com" required>
-              </div>
-              <div class="form-group">
-                <label>Phone Number *</label>
-                <input type="tel" id="touristPhone" placeholder="e.g., +91 9876543210" required>
-              </div>
-              <div class="form-group">
-                <label>Alternate Phone (optional)</label>
-                <input type="tel" id="touristAltPhone" placeholder="e.g., +91 9876543210">
-              </div>
-            </div>
-          </div>
-          
-          <div class="form-section">
-            <div class="section-header">
-              <i class="fas fa-users"></i>
-              <h4>Emergency Contact (Optional)</h4>
-            </div>
-            <div class="form-grid">
-              <div class="form-group full-width">
-                <label>Emergency Contact Name</label>
-                <input type="text" id="familyMemberName" placeholder="Enter emergency contact name">
-              </div>
-              
-              <div id="familyMemberDetails" style="display: none;">
-                <div class="form-group">
-                  <label>Contact Nationality *</label>
-                  <select id="familyMemberNationality">
-                    <option value="">Select nationality</option>
-                    <option value="Indian">Indian</option>
-                    <option value="Foreign">Foreign</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>Contact ID Type *</label>
-                  <input type="text" id="familyMemberIdType" placeholder="e.g., Passport, Aadhar">
-                </div>
-                <div class="form-group">
-                  <label>Blood Group *</label>
-                  <select id="familyMemberBloodGroup">
-                    <option value="">Select blood group</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
-                </div>
-              </div>
+            <div class="modal-row">
+              <label for="familyMemberBloodGroup">Blood Group *</label>
+              <select id="familyMemberBloodGroup">
+                <option value="">Select blood group</option>
+                <option value="A+">A+</option>
+                <option value="A-">A-</option>
+                <option value="B+">B+</option>
+                <option value="B-">B-</option>
+                <option value="AB+">AB+</option>
+                <option value="AB-">AB-</option>
+                <option value="O+">O+</option>
+                <option value="O-">O-</option>
+              </select>
             </div>
           </div>
         </div>
         
         <div class="modal-actions">
-          <button class="action-btn cancel-btn" id="cancelAddBtn">
-            <i class="fas fa-times"></i>
-            <span>Cancel</span>
-          </button>
-          <button class="action-btn create-btn" id="createTouristBtn">
-            <i class="fas fa-plus-circle"></i>
-            <span>Create Tourist</span>
-          </button>
+          <button class="btn cancel-btn" id="cancelAddBtn">Cancel</button>
+          <button class="btn primary-btn" id="createTouristBtn">Add Tourist</button>
         </div>
         <p id="addErrorMsg" class="error-message"></p>
       </div>
     </div>
   </div>
 
-  <!-- Enhanced Panic Alert Modal -->
+  <!-- Panic Alert Modal -->
   <div id="panicAlertOverlay" class="modal-overlay" style="display: none;">
-    <div class="modal panic-modal">
-      <div class="modal-header emergency-header">
-        <div class="modal-title-section">
-          <div class="modal-icon pulse-red">
-            <i class="fas fa-exclamation-triangle"></i>
-          </div>
-          <h3>🚨 EMERGENCY PANIC ALERT</h3>
-        </div>
-        <button id="panicCloseBtn" class="close-btn">
-          <i class="fas fa-times"></i>
-        </button>
+    <div class="modal" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3>🚨 Active Panic Alert</h3>
+        <button id="panicCloseBtn">✕</button>
       </div>
       <div class="modal-body">
-        <div class="emergency-info">
-          <div class="form-group">
-            <label><i class="fas fa-id-badge"></i> Alert ID</label>
-            <input type="text" id="panicAlertId" readonly class="readonly-input">
-          </div>
-          <div class="location-grid">
-            <div class="form-group">
-              <label><i class="fas fa-map-marker-alt"></i> Latitude</label>
-              <input type="number" id="panicLat" step="any" readonly class="readonly-input">
-            </div>
-            <div class="form-group">
-              <label><i class="fas fa-map-marker-alt"></i> Longitude</label>
-              <input type="number" id="panicLng" step="any" readonly class="readonly-input">
-            </div>
+        <div class="modal-row">
+          <label>Alert ID</label>
+          <input type="text" id="panicAlertId" readonly>
+        </div>
+        <div class="modal-row">
+          <label>Coordinates (lat, lng)</label>
+          <div class="split">
+            <input type="number" id="panicLat" step="any" readonly>
+            <input type="number" id="panicLng" step="any" readonly>
           </div>
         </div>
-        <div class="emergency-actions">
-          <button class="action-btn locate-btn" id="centerMapBtn">
-            <i class="fas fa-crosshairs"></i>
-            <span>Locate on Map</span>
-          </button>
-          <button class="action-btn cancel-alert-btn" id="cancelAlertBtn">
-            <i class="fas fa-times-circle"></i>
-            <span>Cancel Alert</span>
-          </button>
+        <div class="modal-actions">
+          <button class="btn" id="centerMapBtn">Center on Map</button>
+          <button class="btn delete" id="cancelAlertBtn">Cancel Alert</button>
         </div>
-        <p id="panicError" class="error-message"></p>
+        <p id="panicError" style="color: red; font-size: 0.9rem;"></p>
       </div>
     </div>
   </div>
 
-  <!-- Enhanced Safe Zones Modal -->
+  <!-- Safe Zones Modal -->
   <div id="safeZonesModal" class="modal-overlay" style="display: none;">
-    <div class="modal zones-modal">
+    <div class="modal safe-zones-modal">
       <div class="modal-header">
-        <div class="modal-title-section">
-          <div class="modal-icon">
-            <i class="fas fa-map-marked-alt"></i>
-          </div>
-          <h3>Manage Safety Zones</h3>
-        </div>
-        <button id="closeSafeZonesBtn" class="close-btn">
-          <i class="fas fa-times"></i>
-        </button>
+        <h3>🟢 Manage Safe Zones & 🔴 Unsafe Zones</h3>
+        <button id="closeSafeZonesBtn">✕</button>
       </div>
-      <div class="zones-content">
-        <!-- Zone Lists Sidebar -->
-        <div class="zones-sidebar">
-          <div class="zone-section safe-zones">
-            <div class="zone-section-header safe">
-              <i class="fas fa-shield-alt"></i>
-              <h4>Safe Zones</h4>
-              <span class="zone-count" id="safeZonesCount">0</span>
-            </div>
-            <div id="safeZonesList" class="zones-list"></div>
+      <div class="safe-zones-content">
+        <!-- Left: Lists -->
+        <div class="zones-lists-panel">
+          <!-- Safe Zones -->
+          <div class="zones-section">
+            <h4 class="section-title safe-title">🟢 Safe Zones (<span id="safeZonesCount">0</span>)</h4>
+            <div id="safeZonesList"></div>
           </div>
-          
-          <div class="zone-section unsafe-zones">
-            <div class="zone-section-header unsafe">
-              <i class="fas fa-exclamation-triangle"></i>
-              <h4>Unsafe Zones</h4>
-              <span class="zone-count" id="unsafeZonesCount">0</span>
-            </div>
-            <div id="unsafeZonesList" class="zones-list"></div>
+          <!-- Unsafe Zones -->
+          <div class="zones-section">
+            <h4 class="section-title unsafe-title">🔴 Unsafe Zones (<span id="unsafeZonesCount">0</span>)</h4>
+            <div id="unsafeZonesList"></div>
           </div>
         </div>
-        
-        <!-- Map and Controls -->
-        <div class="zones-main">
-          <div class="zone-controls">
-            <div class="zone-type-selector">
-              <button class="zone-type-btn active" data-type="safe">
-                <i class="fas fa-shield-alt"></i>
-                Safe Zone
-              </button>
-              <button class="zone-type-btn" data-type="unsafe">
-                <i class="fas fa-exclamation-triangle"></i>
-                Unsafe Zone
-              </button>
-            </div>
-            
-            <div class="zone-settings">
-              <div class="form-group inline">
-                <label><i class="fas fa-expand-arrows-alt"></i> Radius (meters)</label>
-                <input type="number" id="zoneRadius" min="50" max="5000" value="500" step="50">
-              </div>
-              <button class="action-btn save-zone-btn" id="saveSafeZoneBtn" disabled>
-                <i class="fas fa-save"></i>
-                <span>Save Zone</span>
-              </button>
-            </div>
+        <!-- Right: Map + Controls -->
+        <div class="safe-zones-map-panel">
+          <div class="zone-type-toggle">
+            <button class="btn zone-toggle-btn active" data-type="safe">🟢 Safe Zone</button>
+            <button class="btn zone-toggle-btn" data-type="unsafe">🔴 Unsafe Zone</button>
           </div>
-          
-          <div id="safeZonesMap" class="zones-map"></div>
-          <p id="safeZonesError" class="error-message"></p>
+
+          <div id="safeZonesMap" style="height: 550px; border-radius: 12px; margin-bottom: 1rem;"></div>
+
+          <div class="modal-row">
+            <label for="zoneRadius">Radius (meters)</label>
+            <input type="number" id="zoneRadius" min="50" max="5000" value="500" step="50">
+          </div>
+          <div class="modal-actions">
+            <button class="btn small" id="saveSafeZoneBtn" disabled>Save Zone</button>
+          </div>
+          <p id="safeZonesError" style="color: red; font-size: 0.9rem;"></p>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
   <script src="script.js"></script>
   <script type="module" src="realtime.js"></script>
+
+  <script>
+    // Toggle widget visibility
+    function toggleWidget(widgetClass) {
+      const widget = document.querySelector('.' + widgetClass);
+      const content = widget.querySelector('.widget-content');
+      const btn = widget.querySelector('.minimize-btn i');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        btn.className = 'fas fa-minus';
+        widget.classList.remove('minimized');
+      } else {
+        content.style.display = 'none';
+        btn.className = 'fas fa-plus';
+        widget.classList.add('minimized');
+      }
+    }
+
+    // Update header stats when data changes
+    function updateHeaderStats() {
+      const active = tourists.filter(t => t.status === 'normal').length;
+      const abnormal = tourists.filter(t => t.status === 'abnormal').length;
+      const critical = tourists.filter(t => t.status === 'critical').length;
+      
+      document.getElementById('activeCount').textContent = active;
+      document.getElementById('abnormalCount').textContent = abnormal;
+      document.getElementById('criticalCount').textContent = critical;
+      
+      // Also update the old selectors for backward compatibility
+      const activeEl = document.querySelector('.status.active');
+      const abnormalEl = document.querySelector('.status.abnormal');
+      const criticalEl = document.querySelector('.status.critical');
+      
+      if (activeEl) activeEl.textContent = `${active} Active`;
+      if (abnormalEl) abnormalEl.textContent = `${abnormal} Abnormal`;
+      if (criticalEl) criticalEl.textContent = `${critical} Critical`;
+    }
+  </script>
 </body>
 
 </html>
